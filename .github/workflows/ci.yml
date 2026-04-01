@@ -1,28 +1,80 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
-    push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
+  push:
+    branches:
+      - main          # triggers the full pipeline (test + deploy) on merge
+  pull_request:
+    branches:
+      - main          # triggers tests only on PRs targeting main
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
+  test:
+    name: Run Tests
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        node-version: [22]
+    environment: MONGO_URI
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-        steps:
-        - name: Checkout code
-            uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
 
-        - name: Set up Node.js
-            uses: actions/setup-node@v2
-            with:
-                node-version: '14'
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: |
+          npm install --global yarn
+          yarn install
 
-        - name: Install dependencies
-            run: npm install
+      - name: Run Backend Tests
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORT: ${{ secrets.PORT }}
+        working-directory: ./backend
+        run: npm test
 
-        - name: Run tests
-            run: npm test
+      - name: Run Frontend Tests
+          working-directory: ./frontend
+          run: yarn test --watchAll=false --passWithNoTests
+
+  deploy:
+    name: Deploy to EC2
+    needs: test                          # only runs if test job passes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Stop PM2
+        run: pm2 stop all
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: |
+          npm install --global yarn
+          yarn install
+
+      - name: Install Frontend Dependencies and Build
+        working-directory: ./frontend
+        run: |
+          sudo rm -rf ./build
+          yarn install
+          yarn run build
+
+      - name: Write production .env
+        run: |
+          cd ./backend
+          touch .env
+          echo "${{ secrets.PROD }}" > .env
+
+      - name: Start and Restart PM2
+        run: |
+          pm2 start all
+          pm2 restart all
