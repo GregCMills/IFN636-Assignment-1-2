@@ -84,3 +84,6 @@ jobs:
           pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
           pm2 describe Frontend > /dev/null 2>&1 && pm2 restart Frontend || pm2 serve ../frontend/build 3000 --name="Frontend" --spa
           pm2 save
+
+      - name: Reload nginx
+        run: sudo systemctl reload nginx
