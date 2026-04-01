@@ -40,8 +40,8 @@ jobs:
         run: npm test
 
       - name: Run Frontend Tests
-          working-directory: ./frontend
-          run: yarn test --watchAll=false --passWithNoTests
+        working-directory: ./frontend
+        run: yarn test --watchAll=false --passWithNoTests
 
   deploy:
     name: Deploy to EC2
