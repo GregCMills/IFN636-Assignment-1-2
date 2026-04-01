@@ -79,6 +79,8 @@ jobs:
           echo "${{ secrets.PROD }}" > .env
 
       - name: Start and Restart PM2
-        run: |
-          pm2 start all
-          pm2 restart all
+        working-directory: ./backend
+        run: | # if Backend is running, restart else start. If frontend is running restart, else start.
+          pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
+          pm2 describe Frontend > /dev/null 2>&1 && pm2 restart Frontend || pm2 serve ../frontend/build 3000 --name="Frontend" --spa
+          pm2 save
