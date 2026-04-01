@@ -39,6 +39,10 @@ jobs:
         working-directory: ./backend
         run: npm test
 
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: yarn install
+
       - name: Run Frontend Tests
         working-directory: ./frontend
         run: yarn test --watchAll=false --passWithNoTests
