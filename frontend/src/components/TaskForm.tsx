@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@clerk/clerk-react';
 import axiosInstance from '../axiosConfig';
 import { Task } from '../types';
 
@@ -12,7 +12,7 @@ interface TaskFormProps {
 
 const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }: TaskFormProps) => {
 
-  const { user } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   const [formData, setFormData] = useState({ title: '', description: '', deadline: '' });
 
   useEffect(() => {
@@ -29,16 +29,17 @@ const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }: TaskFormProp
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user) return;
+    if (!isSignedIn) return;
     try {
+      const token = await getToken();
       if (editingTask) {
         const response = await axiosInstance.put(`/api/tasks/${editingTask._id}`, formData, {
-          headers: { Authorization: `Bearer ${user.token}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         setTasks(tasks.map((task) => (task._id === response.data._id ? response.data : task)));
       } else {
         const response = await axiosInstance.post('/api/tasks', formData, {
-          headers: { Authorization: `Bearer ${user.token}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         setTasks([...tasks, response.data]);
       }
