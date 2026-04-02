@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 
@@ -18,7 +18,7 @@ const Profile = () => {
       setLoading(true);
       try {
         const response = await axiosInstance.get('/api/auth/profile', {
-          headers: { Authorization: `Bearer ${user.token}` },
+          headers: { Authorization: `Bearer ${user!.token}` },
         });
         setFormData({
           name: response.data.name,
@@ -36,12 +36,12 @@ const Profile = () => {
     if (user) fetchProfile();
   }, [user]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     try {
       await axiosInstance.put('/api/auth/profile', formData, {
-        headers: { Authorization: `Bearer ${user.token}` },
+        headers: { Authorization: `Bearer ${user!.token}` },
       });
       alert('Profile updated successfully!');
     } catch (error) {

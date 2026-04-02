@@ -27,9 +27,7 @@ jobs:
 
       - name: Install Backend Dependencies
         working-directory: ./backend
-        run: |
-          npm install --global yarn
-          yarn install
+        run: npm ci
 
       - name: Run Backend Tests
         env:
@@ -41,11 +39,15 @@ jobs:
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
-        run: yarn install
+        run: npm ci
+
+      - name: Typecheck Frontend
+        working-directory: ./frontend
+        run: npm run typecheck
 
       - name: Run Frontend Tests
         working-directory: ./frontend
-        run: yarn test --watchAll=false --passWithNoTests
+        run: npm test
 
   deploy:
     name: Deploy to EC2
@@ -61,16 +63,14 @@ jobs:
 
       - name: Install Backend Dependencies
         working-directory: ./backend
-        run: |
-          npm install --global yarn
-          yarn install
+        run: npm ci
 
       - name: Install Frontend Dependencies and Build
         working-directory: ./frontend
         run: |
-          sudo rm -rf ./build
-          yarn install
-          yarn run build
+          sudo rm -rf ./dist
+          npm ci
+          npm run build
 
       - name: Write production .env
         run: |
@@ -80,9 +80,10 @@ jobs:
 
       - name: Start and Restart PM2
         working-directory: ./backend
-        run: | # if Backend is running, restart else start. If frontend is running restart, else start.
+        run: |
           pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
-          pm2 describe Frontend > /dev/null 2>&1 && pm2 restart Frontend || pm2 serve ../frontend/build 3000 --name="Frontend" --spa
+          pm2 delete Frontend 2>/dev/null || true
+          pm2 serve ../frontend/dist 3000 --name="Frontend" --spa
           pm2 save
 
       - name: Reload nginx
