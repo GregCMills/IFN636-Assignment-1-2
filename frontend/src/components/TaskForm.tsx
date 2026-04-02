@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+import { Task } from '../types';
 
-const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }) => {
+interface TaskFormProps {
+  tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  editingTask: Task | null;
+  setEditingTask: React.Dispatch<React.SetStateAction<Task | null>>;
+}
+
+const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }: TaskFormProps) => {
+
   const { user } = useAuth();
   const [formData, setFormData] = useState({ title: '', description: '', deadline: '' });
 
@@ -18,8 +27,9 @@ const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }) => {
     }
   }, [editingTask]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!user) return;
     try {
       if (editingTask) {
         const response = await axiosInstance.put(`/api/tasks/${editingTask._id}`, formData, {

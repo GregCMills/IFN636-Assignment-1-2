@@ -1,10 +1,18 @@
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+import { Task } from '../types';
 
-const TaskList = ({ tasks, setTasks, setEditingTask }) => {
+interface TaskListProps {
+  tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  setEditingTask: React.Dispatch<React.SetStateAction<Task | null>>;
+}
+
+const TaskList = ({ tasks, setTasks, setEditingTask }: TaskListProps) => {
   const { user } = useAuth();
 
-  const handleDelete = async (taskId) => {
+  const handleDelete = async (taskId: string) => {
+    if (!user) return;
     try {
       await axiosInstance.delete(`/api/tasks/${taskId}`, {
         headers: { Authorization: `Bearer ${user.token}` },
