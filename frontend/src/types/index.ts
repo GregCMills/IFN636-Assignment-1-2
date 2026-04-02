@@ -4,9 +4,3 @@ export interface Task {
     description: string;
     deadline: string;
   }
-  
-  export interface User {
-    token: string;
-    name?: string;
-    email?: string;
-  }

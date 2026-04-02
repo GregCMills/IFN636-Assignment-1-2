@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@clerk/clerk-react';
 import axiosInstance from '../axiosConfig';
 import { Task } from '../types';
 
@@ -9,13 +9,14 @@ interface TaskListProps {
 }
 
 const TaskList = ({ tasks, setTasks, setEditingTask }: TaskListProps) => {
-  const { user } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
 
   const handleDelete = async (taskId: string) => {
-    if (!user) return;
+    if (!isSignedIn) return;
     try {
+      const token = await getToken();
       await axiosInstance.delete(`/api/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${user.token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setTasks(tasks.filter((task) => task._id !== taskId));
     } catch (error) {

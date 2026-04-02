@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 
 vi.mock('axios', () => ({
@@ -15,13 +15,21 @@ vi.mock('axios', () => ({
   }
 }));
 
-vi.mock('./context/AuthContext', () => ({
-  useAuth: () => ({ user: null, login: vi.fn(), logout: vi.fn() }),
-  AuthProvider: ({ children }: { children: ReactNode }) => children,
+vi.mock('@clerk/clerk-react', () => ({
+  ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useAuth: () => ({ isSignedIn: false, getToken: vi.fn() }),
+  useUser: () => ({ isSignedIn: false, user: null }),
+  useClerk: () => ({ signOut: vi.fn() }),
+  SignIn: () => <div>Sign In</div>,
+  SignUp: () => <div>Sign Up</div>,
 }));
 
 test('renders the navbar', () => {
-  render(<App />);
+  render(
+    <MemoryRouter>
+      <App />
+    </MemoryRouter>
+  );
   const navLink = screen.getByText(/Rental Equipment Application/i);
   expect(navLink).toBeInTheDocument();
 });
