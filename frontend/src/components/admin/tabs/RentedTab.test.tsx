@@ -22,7 +22,6 @@ const makeProps = (overrides: Partial<AdminTabProps> = {}): AdminTabProps => ({
   createAsset:         vi.fn().mockResolvedValue({ id: 'x', typeId: 't1', name: 'X', status: 'Available' as const }),
   createAssets:        vi.fn().mockResolvedValue([]),
   deleteAsset:         vi.fn().mockResolvedValue(undefined),
-  resetToSeedData:     vi.fn().mockResolvedValue({ skipped: [] }),
   ...overrides,
 });
 

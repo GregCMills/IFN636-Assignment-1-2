@@ -1,11 +1,21 @@
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useState, useEffect } from 'react';
+import { Bug, RefreshCw } from 'lucide-react';
 import axiosInstance from '../axiosConfig';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Profile = () => {
   const { user } = useUser();
   const { getToken } = useAuth();
   const [formData, setFormData] = useState({ address: '', phone: '' });
+
+  const isAdmin = (user?.publicMetadata?.role as string) === 'admin';
+
+  // ── Debug reset state ──────────────────────────────────────────────────────
+  const [confirming,    setConfirming]    = useState(false);
+  const [resetLoading,  setResetLoading]  = useState(false);
+  const [resetError,    setResetError]    = useState('');
+  const [resetSuccess,  setResetSuccess]  = useState('');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -27,8 +37,32 @@ const Profile = () => {
     alert('Profile updated!');
   };
 
+  const handleResetAssets = async () => {
+    setResetLoading(true);
+    setResetError('');
+    setResetSuccess('');
+    try {
+      const token = await getToken();
+      const { data } = await axiosInstance.post(
+        '/api/assets/reset-seed',
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const skippedNote = data.skipped?.length
+        ? ` (${data.skipped.length} type(s) not found and skipped: ${data.skipped.join(', ')})`
+        : '';
+      setResetSuccess(`Assets reset to seed data successfully.${skippedNote}`);
+      // Navigate to dashboard so it re-fetches the fresh state
+      setTimeout(() => { window.location.assign('/dashboard'); }, 1200);
+    } catch {
+      setResetError('Failed to reset asset data.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto mt-16 px-4">
+    <div className="max-w-md mx-auto mt-16 px-4 flex flex-col gap-6">
       <div className="card p-8">
         <h1 className="text-2xl font-bold mb-6 text-text-primary">Your Profile</h1>
 
@@ -65,6 +99,53 @@ const Profile = () => {
           </button>
         </form>
       </div>
+
+      {/* ── Admin debug tools ────────────────────────────────────────────────── */}
+      {isAdmin && (
+        <div className="card p-6 border border-status-danger/20">
+          <div className="flex items-center gap-2 mb-1">
+            <Bug size={18} className="text-status-danger" />
+            <h2 className="text-lg font-bold text-text-primary">Debug Tools</h2>
+          </div>
+          <p className="text-text-subtle text-sm mb-5">
+            These actions modify live data and are for development and testing only.
+          </p>
+
+          {resetError   && <p className="text-status-danger text-sm mb-4">{resetError}</p>}
+          {resetSuccess && <p className="text-green-400 text-sm mb-4">{resetSuccess}</p>}
+
+          <div className="flex items-start justify-between gap-4 p-4 bg-surface-elevated/40 rounded-lg border border-border-default">
+            <div className="min-w-0">
+              <p className="font-medium text-text-primary text-sm">Reset Assets to Seed Data</p>
+              <p className="text-text-subtle text-xs mt-1">
+                Deletes all asset records and replaces them with the default seed data.
+                Product groups and types are not affected.
+              </p>
+            </div>
+            <button
+              onClick={() => setConfirming(true)}
+              disabled={resetLoading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
+                         text-status-danger border border-status-danger/30
+                         hover:bg-status-danger-dim/40 transition whitespace-nowrap shrink-0
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={14} className={resetLoading ? 'animate-spin' : ''} />
+              {resetLoading ? 'Resetting…' : 'Reset Assets'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={confirming}
+        title="Reset all assets?"
+        message="This will permanently delete every asset record and replace them with the seed data."
+        detail="Product groups and types will not be affected."
+        confirmLabel="Yes, reset assets"
+        onConfirm={() => { setConfirming(false); handleResetAssets(); }}
+        onCancel={() => setConfirming(false)}
+      />
     </div>
   );
 };

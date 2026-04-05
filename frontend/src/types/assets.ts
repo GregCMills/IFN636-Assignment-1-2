@@ -58,5 +58,4 @@ export interface AdminTabProps {
   createAsset:          (typeId: string, name: string) => Promise<Asset>;
   createAssets:         (typeId: string, names: string[]) => Promise<Asset[]>;
   deleteAsset:          (id: string) => Promise<void>;
-  resetToSeedData:      () => Promise<{ skipped: string[] }>;
 }
