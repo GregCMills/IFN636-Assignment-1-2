@@ -3,6 +3,7 @@ import { Package, CheckCircle, Clock } from 'lucide-react';
 import type { CustomerTabProps } from '../../types/assets';
 import BrowseTab from './tabs/BrowseTab';
 import MyRentalsTab from './tabs/MyRentalsTab';
+import PendingTab from './tabs/PendingTab';
 
 interface TabConfig {
   id: string;
@@ -15,13 +16,6 @@ const TABS: TabConfig[] = [
   { id: 'rentals',  label: 'My Rentals', icon: <CheckCircle size={16} /> },
   { id: 'pending',  label: 'Pending',    icon: <Clock size={16} /> },
 ];
-
-const ComingSoon = ({ label }: { label: string }) => (
-  <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-    <p className="text-text-muted text-lg font-medium">{label}</p>
-    <p className="text-text-subtle text-sm">This tab will be available soon.</p>
-  </div>
-);
 
 const CustomerDashboard = (props: CustomerTabProps) => {
   const [activeTabId, setActiveTabId] = useState('browse');
@@ -50,7 +44,7 @@ const CustomerDashboard = (props: CustomerTabProps) => {
 
       {activeTabId === 'browse'  && <BrowseTab {...props} />}
       {activeTabId === 'rentals' && <MyRentalsTab {...props} />}
-      {activeTabId === 'pending' && <ComingSoon label="Pending Requests" />}
+      {activeTabId === 'pending' && <PendingTab {...props} />}
     </div>
   );
 };
