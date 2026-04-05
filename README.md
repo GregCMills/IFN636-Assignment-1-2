@@ -1,3 +1,9 @@
+# Links
+
+**EC2 Public URL:** http://54.206.192.58 
+
+**Alternate Public URL:** http://gregmills.xyz 
+
 # Users
 
 To sign in to the application as a customer, you can use this example account:
