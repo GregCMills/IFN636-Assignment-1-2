@@ -161,6 +161,7 @@ const Dashboard = () => {
     assets,
     assetTypes,
     productGroups,
+    currentUserId: user!.id,
     requestRental,
     updateAssetStatuses,
   };

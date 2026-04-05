@@ -38,6 +38,7 @@ export interface CustomerTabProps {
   assets:              Asset[];
   assetTypes:          AssetType[];
   productGroups:       ProductGroup[];
+  currentUserId:       string;
   requestRental:       (items: { typeId: string; quantity: number }[], returnDate: string) => Promise<void>;
   updateAssetStatuses: (ids: string[], status: AssetStatus, clearData?: boolean) => Promise<void>;
 }

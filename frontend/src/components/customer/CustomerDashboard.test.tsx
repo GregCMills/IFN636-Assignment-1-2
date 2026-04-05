@@ -15,6 +15,7 @@ const makeProps = (overrides: Partial<CustomerTabProps> = {}): CustomerTabProps 
   assets,
   assetTypes,
   productGroups,
+  currentUserId:       'u-test',
   requestRental:       vi.fn().mockResolvedValue(undefined),
   updateAssetStatuses: vi.fn().mockResolvedValue(undefined),
   ...overrides,
@@ -45,13 +46,13 @@ describe('CustomerDashboard — rendering', () => {
 // ── Tab switching ─────────────────────────────────────────────────────────────
 
 describe('CustomerDashboard — tab switching', () => {
-  it('switching to "My Rentals" hides the catalogue and shows the coming-soon placeholder', async () => {
+  it('switching to "My Rentals" hides the catalogue and shows the rentals empty state', async () => {
     const user = userEvent.setup();
     render(<CustomerDashboard {...makeProps()} />);
     await user.click(screen.getByRole('button', { name: /my rentals/i }));
 
     expect(screen.queryByRole('heading', { name: 'Laptops' })).not.toBeInTheDocument();
-    expect(screen.getByText('This tab will be available soon.')).toBeInTheDocument();
+    expect(screen.getByText(/no active rentals/i)).toBeInTheDocument();
   });
 
   it('switching to "Pending" hides the catalogue and shows the coming-soon placeholder', async () => {
