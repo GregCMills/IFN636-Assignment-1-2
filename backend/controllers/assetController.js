@@ -161,9 +161,24 @@ const batchCreateAssets = async (req, res) => {
 
 /**
  * POST /api/assets/reset-seed  (admin only — enforced by adminMiddleware on the route)
- * Deletes every Asset document and re-creates the standard seed set.
- * Asset types are matched by name so the endpoint is resilient to ObjectId churn.
+ * Full reset: deletes all Assets, AssetTypes, and ProductGroups, then re-creates
+ * everything from the standard seed set so the type-name lookup always succeeds.
  */
+const SEED_GROUPS = [
+  { name: 'Laptops' },
+  { name: 'Projectors' },
+  { name: 'Cameras' },
+  { name: 'Audio' },
+];
+
+const SEED_TYPES = [
+  { groupName: 'Laptops',    name: 'MacBook Air M2' },
+  { groupName: 'Laptops',    name: 'Dell XPS 15' },
+  { groupName: 'Projectors', name: 'Epson 4K Projector' },
+  { groupName: 'Cameras',    name: 'Sony A7III Camera' },
+  { groupName: 'Audio',      name: 'Rode Wireless GO II' },
+];
+
 const SEED_ASSETS = [
   { typeName: 'MacBook Air M2',      name: 'Unit 001',  status: 'Available' },
   { typeName: 'MacBook Air M2',      name: 'Unit 002',  status: 'Available' },
@@ -178,27 +193,41 @@ const SEED_ASSETS = [
 
 const resetSeedAssets = async (req, res) => {
   try {
-    const AssetType = require('../models/AssetType');
-    const types = await AssetType.find();
-    const typeNameToId = {};
-    types.forEach(t => { typeNameToId[t.name] = t._id; });
+    const ProductGroup = require('../models/ProductGroup');
+    const AssetType    = require('../models/AssetType');
 
-    const skipped = SEED_ASSETS.filter(s => !typeNameToId[s.typeName]).map(s => s.typeName);
-
+    // Wipe all three collections
     await Asset.deleteMany({});
+    await AssetType.deleteMany({});
+    await ProductGroup.deleteMany({});
 
-    const docs = SEED_ASSETS
-      .filter(s => typeNameToId[s.typeName])
-      .map(s => ({
-        typeId: typeNameToId[s.typeName],
-        name:   s.name,
-        status: s.status,
-        ...(s.rentedByUserId ? { rentedByUserId: s.rentedByUserId } : {}),
-        ...(s.returnDate     ? { returnDate:     s.returnDate }     : {}),
-      }));
+    // Re-create groups and build name→id map
+    const createdGroups = await ProductGroup.insertMany(SEED_GROUPS);
+    const groupNameToId = {};
+    createdGroups.forEach(g => { groupNameToId[g.name] = g._id; });
 
-    const created = await Asset.insertMany(docs);
-    res.json({ assets: created.map(a => a.toJSON()), skipped });
+    // Re-create types and build name→id map
+    const typeDocs = SEED_TYPES.map(t => ({ groupId: groupNameToId[t.groupName], name: t.name }));
+    const createdTypes = await AssetType.insertMany(typeDocs);
+    const typeNameToId = {};
+    createdTypes.forEach(t => { typeNameToId[t.name] = t._id; });
+
+    // Re-create assets
+    const assetDocs = SEED_ASSETS.map(s => ({
+      typeId: typeNameToId[s.typeName],
+      name:   s.name,
+      status: s.status,
+      ...(s.rentedByUserId ? { rentedByUserId: s.rentedByUserId } : {}),
+      ...(s.returnDate     ? { returnDate:     s.returnDate }     : {}),
+    }));
+    const createdAssets = await Asset.insertMany(assetDocs);
+
+    res.json({
+      assets:        createdAssets.map(a => a.toJSON()),
+      assetTypes:    createdTypes.map(t => t.toJSON()),
+      productGroups: createdGroups.map(g => g.toJSON()),
+      skipped:       [],
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
