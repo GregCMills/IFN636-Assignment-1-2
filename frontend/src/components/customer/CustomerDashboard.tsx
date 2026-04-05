@@ -5,18 +5,29 @@ import BrowseTab from './tabs/BrowseTab';
 import MyRentalsTab from './tabs/MyRentalsTab';
 import PendingTab from './tabs/PendingTab';
 
+/** Shape of each entry in the static TABS registry. */
 interface TabConfig {
   id: string;
   label: string;
   icon: React.ReactNode;
 }
 
+/**
+ * Static tab registry — add new customer tabs here.
+ * Each entry maps an id to a label and icon; the active tab id is stored in state
+ * and used to conditionally render the matching tab component below.
+ */
 const TABS: TabConfig[] = [
   { id: 'browse',   label: 'Browse',     icon: <Package size={16} /> },
   { id: 'rentals',  label: 'My Rentals', icon: <CheckCircle size={16} /> },
   { id: 'pending',  label: 'Pending',    icon: <Clock size={16} /> },
 ];
 
+/**
+ * Top-level layout component for the customer-facing dashboard.
+ * Renders a tab bar and delegates rendering to the appropriate tab component.
+ * All data-fetching props are passed straight through to each tab via spread.
+ */
 const CustomerDashboard = (props: CustomerTabProps) => {
   const [activeTabId, setActiveTabId] = useState('browse');
 

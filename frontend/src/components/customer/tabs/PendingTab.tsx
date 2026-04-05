@@ -4,6 +4,14 @@ import type { CustomerTabProps } from '../../../types/assets';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
 import InlineErrorBanner from '../../ui/InlineErrorBanner';
 
+/**
+ * Shows two read-only sections for the authenticated customer:
+ *   1. Pending Rentals  — items the customer has requested but admin has not yet approved.
+ *   2. Pending Returns  — items the customer has submitted for return but admin has not yet confirmed.
+ *
+ * Customers can cancel a pending return (reverting the asset back to 'Rented')
+ * but cannot act on pending rentals (those require admin approval).
+ */
 const PendingTab = ({
   assets,
   assetTypes,
@@ -28,6 +36,12 @@ const PendingTab = ({
   };
   const getTypeName = (typeId: string) => getType(typeId)?.name ?? 'Unknown Product';
 
+  /**
+   * Reverts a pending return back to 'Rented', allowing the customer to keep
+   * the asset and re-submit a return later.
+   *
+   * @param ids - Asset IDs to cancel the return for.
+   */
   const handleCancelReturn = async (ids: string[]) => {
     setSubmitting(true);
     setApiError('');
@@ -43,6 +57,15 @@ const PendingTab = ({
     }
   };
 
+  /**
+   * Reusable renderer for both the Pending Rentals and Pending Returns sections.
+   * Assets are first grouped by return date, then by ProductGroup, then by AssetType,
+   * giving a three-level hierarchy: Date → Group → Type → individual assets.
+   *
+   * @param sectionAssets  - The filtered asset list for this section.
+   * @param emptyMessage   - Text shown when sectionAssets is empty.
+   * @param renderAction   - Renders the action button (or null) for each asset row.
+   */
   const renderSection = (
     sectionAssets: typeof pendingRentals,
     emptyMessage: string,

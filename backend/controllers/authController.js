@@ -1,9 +1,24 @@
+/**
+ * @module authController
+ * Handles reading and updating a user's supplementary profile data (address and
+ * phone number). Authentication is provided by Clerk; this module only manages
+ * the extra fields stored in our own MongoDB User collection.
+ */
+
 const User = require('../models/User');
 
 /** Clerk v2 exposes req.auth as a function; v1 / test stubs expose it as a plain object. */
 const getAuthUserId = (req) =>
   typeof req.auth === 'function' ? req.auth()?.userId : req.auth?.userId;
 
+/**
+ * GET /api/auth/profile
+ * Returns the address and phone number stored for the authenticated user.
+ * Responds with 404 if no profile document exists yet.
+ *
+ * @param {import('express').Request}  req - Clerk-authenticated request
+ * @param {import('express').Response} res - { address: string, phone: string }
+ */
 const getProfile = async (req, res) => {
   try {
     const clerkUserId = getAuthUserId(req);
@@ -15,6 +30,14 @@ const getProfile = async (req, res) => {
   }
 };
 
+/**
+ * PUT /api/auth/profile
+ * Creates or updates the address and phone number for the authenticated user.
+ * Uses upsert so a document is created on first save without a prior GET.
+ *
+ * @param {import('express').Request}  req - body: { address?: string, phone?: string }
+ * @param {import('express').Response} res - { address: string, phone: string }
+ */
 const updateUserProfile = async (req, res) => {
   try {
     const clerkUserId = getAuthUserId(req);
