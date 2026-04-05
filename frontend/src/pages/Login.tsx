@@ -5,13 +5,12 @@ const Login = () => (
   <div className="flex min-h-screen items-center justify-center bg-surface-deep p-4">
 
     <div className="bg-surface-raised border border-border-default rounded-2xl shadow-2xl w-full max-w-[420px] p-8">
-
       <img
         src="/rental_manager_logo_full.png"
         alt="Rental Manager"
         className="w-full h-auto mb-4"
       />
-
+      <h1 className="text-2xl font-bold text-text-primary mb-6 text-center">Sign in:</h1>
       <SignIn
         appearance={{
           baseTheme: dark,
