@@ -1,4 +1,5 @@
 const Asset = require('../models/Asset');
+const { SEED_GROUPS, SEED_TYPES, SEED_ASSETS } = require('../data/seedData');
 
 /** Clerk v2 exposes req.auth as a function; v1 / test stubs expose it as a plain object. */
 const getAuthUserId = (req) =>
@@ -164,33 +165,6 @@ const batchCreateAssets = async (req, res) => {
  * Full reset: deletes all Assets, AssetTypes, and ProductGroups, then re-creates
  * everything from the standard seed set so the type-name lookup always succeeds.
  */
-const SEED_GROUPS = [
-  { name: 'Laptops' },
-  { name: 'Projectors' },
-  { name: 'Cameras' },
-  { name: 'Audio' },
-];
-
-const SEED_TYPES = [
-  { groupName: 'Laptops',    name: 'MacBook Air M2' },
-  { groupName: 'Laptops',    name: 'Dell XPS 15' },
-  { groupName: 'Projectors', name: 'Epson 4K Projector' },
-  { groupName: 'Cameras',    name: 'Sony A7III Camera' },
-  { groupName: 'Audio',      name: 'Rode Wireless GO II' },
-];
-
-const SEED_ASSETS = [
-  { typeName: 'MacBook Air M2',      name: 'Unit 001',  status: 'Available' },
-  { typeName: 'MacBook Air M2',      name: 'Unit 002',  status: 'Available' },
-  { typeName: 'MacBook Air M2',      name: 'Unit 003',  status: 'Rented',         rentedByUserId: 'John Ranch', returnDate: '2026-04-15' },
-  { typeName: 'Dell XPS 15',         name: 'Unit 001',  status: 'Available' },
-  { typeName: 'Epson 4K Projector',  name: 'Unit 001',  status: 'Pending Rental', rentedByUserId: 'Sally Benedict', returnDate: '2026-03-30' },
-  { typeName: 'Epson 4K Projector',  name: 'Unit 002',  status: 'Maintenance' },
-  { typeName: 'Sony A7III Camera',   name: 'Unit 001',  status: 'Available' },
-  { typeName: 'Sony A7III Camera',   name: 'Unit 002',  status: 'Pending Return', rentedByUserId: 'John Ranch', returnDate: '2026-03-20' },
-  { typeName: 'Rode Wireless GO II', name: 'Mic Set 1', status: 'Available' },
-];
-
 const resetSeedAssets = async (req, res) => {
   try {
     const ProductGroup = require('../models/ProductGroup');
