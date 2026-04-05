@@ -12,7 +12,14 @@ const Navbar = () => {
 
   return (
     <nav className="bg-blue-600 text-white p-4 flex justify-between items-center">
-      <Link to="/" className="text-2xl font-bold">Rental Equipment Application v2</Link>
+      <div className="flex items-center flex-1">
+        <img
+          src="/rental_manager_logo_small.png"
+          alt="Rental Manager Logo"
+          className="h-10 w-auto mr-3"
+        />
+        <Link to="/" className="text-2xl font-bold">Rental Manager</Link>
+      </div>
       <div>
         {isSignedIn ? (
           <>
