@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Package, CheckCircle, Clock } from 'lucide-react';
 import type { CustomerTabProps } from '../../types/assets';
 import BrowseTab from './tabs/BrowseTab';
+import MyRentalsTab from './tabs/MyRentalsTab';
 
 interface TabConfig {
   id: string;
@@ -48,7 +49,7 @@ const CustomerDashboard = (props: CustomerTabProps) => {
       </div>
 
       {activeTabId === 'browse'  && <BrowseTab {...props} />}
-      {activeTabId === 'rentals' && <ComingSoon label="My Rentals" />}
+      {activeTabId === 'rentals' && <MyRentalsTab {...props} />}
       {activeTabId === 'pending' && <ComingSoon label="Pending Requests" />}
     </div>
   );

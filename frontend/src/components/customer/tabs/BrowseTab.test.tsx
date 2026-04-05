@@ -28,6 +28,7 @@ const makeProps = (overrides: Partial<CustomerTabProps> = {}): CustomerTabProps 
   assets,
   assetTypes,
   productGroups,
+  currentUserId:       'u-test',
   requestRental:       vi.fn().mockResolvedValue(undefined),
   updateAssetStatuses: vi.fn().mockResolvedValue(undefined),
   ...overrides,
