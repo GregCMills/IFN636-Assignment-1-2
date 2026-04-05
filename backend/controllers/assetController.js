@@ -182,12 +182,12 @@ const SEED_TYPES = [
 const SEED_ASSETS = [
   { typeName: 'MacBook Air M2',      name: 'Unit 001',  status: 'Available' },
   { typeName: 'MacBook Air M2',      name: 'Unit 002',  status: 'Available' },
-  { typeName: 'MacBook Air M2',      name: 'Unit 003',  status: 'Rented',         rentedByUserId: 'seed-user-1', returnDate: '2026-04-15' },
+  { typeName: 'MacBook Air M2',      name: 'Unit 003',  status: 'Rented',         rentedByUserId: 'John Ranch', returnDate: '2026-04-15' },
   { typeName: 'Dell XPS 15',         name: 'Unit 001',  status: 'Available' },
-  { typeName: 'Epson 4K Projector',  name: 'Unit 001',  status: 'Pending Rental', rentedByUserId: 'seed-user-2', returnDate: '2026-03-30' },
+  { typeName: 'Epson 4K Projector',  name: 'Unit 001',  status: 'Pending Rental', rentedByUserId: 'Sally Benedict', returnDate: '2026-03-30' },
   { typeName: 'Epson 4K Projector',  name: 'Unit 002',  status: 'Maintenance' },
   { typeName: 'Sony A7III Camera',   name: 'Unit 001',  status: 'Available' },
-  { typeName: 'Sony A7III Camera',   name: 'Unit 002',  status: 'Pending Return', rentedByUserId: 'seed-user-1', returnDate: '2026-03-20' },
+  { typeName: 'Sony A7III Camera',   name: 'Unit 002',  status: 'Pending Return', rentedByUserId: 'John Ranch', returnDate: '2026-03-20' },
   { typeName: 'Rode Wireless GO II', name: 'Mic Set 1', status: 'Available' },
 ];
 
