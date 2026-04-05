@@ -106,6 +106,13 @@ const Dashboard = () => {
     setAssets(prev => prev.filter(a => a.id !== id));
   };
 
+  const resetToSeedData = async () => {
+    const headers = await authHeaders();
+    const { data } = await axiosInstance.post('/api/assets/reset-seed', {}, { headers });
+    setAssets(data.assets);
+    return { skipped: data.skipped as string[] };
+  };
+
   const requestRental = async (
     items: { typeId: string; quantity: number }[],
     returnDate: string,
@@ -155,12 +162,14 @@ const Dashboard = () => {
     createAsset,
     createAssets,
     deleteAsset,
+    resetToSeedData,
   };
 
   const customerProps: CustomerTabProps = {
     assets,
     assetTypes,
     productGroups,
+    currentUserId: user!.id,
     requestRental,
     updateAssetStatuses,
   };

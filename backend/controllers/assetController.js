@@ -159,4 +159,49 @@ const batchCreateAssets = async (req, res) => {
   }
 };
 
-module.exports = { listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus, requestRental };
+/**
+ * POST /api/assets/reset-seed  (admin only — enforced by adminMiddleware on the route)
+ * Deletes every Asset document and re-creates the standard seed set.
+ * Asset types are matched by name so the endpoint is resilient to ObjectId churn.
+ */
+const SEED_ASSETS = [
+  { typeName: 'MacBook Air M2',      name: 'Unit 001',  status: 'Available' },
+  { typeName: 'MacBook Air M2',      name: 'Unit 002',  status: 'Available' },
+  { typeName: 'MacBook Air M2',      name: 'Unit 003',  status: 'Rented',         rentedByUserId: 'seed-user-1', returnDate: '2026-04-15' },
+  { typeName: 'Dell XPS 15',         name: 'Unit 001',  status: 'Available' },
+  { typeName: 'Epson 4K Projector',  name: 'Unit 001',  status: 'Pending Rental', rentedByUserId: 'seed-user-2', returnDate: '2026-03-30' },
+  { typeName: 'Epson 4K Projector',  name: 'Unit 002',  status: 'Maintenance' },
+  { typeName: 'Sony A7III Camera',   name: 'Unit 001',  status: 'Available' },
+  { typeName: 'Sony A7III Camera',   name: 'Unit 002',  status: 'Pending Return', rentedByUserId: 'seed-user-1', returnDate: '2026-03-20' },
+  { typeName: 'Rode Wireless GO II', name: 'Mic Set 1', status: 'Available' },
+];
+
+const resetSeedAssets = async (req, res) => {
+  try {
+    const AssetType = require('../models/AssetType');
+    const types = await AssetType.find();
+    const typeNameToId = {};
+    types.forEach(t => { typeNameToId[t.name] = t._id; });
+
+    const skipped = SEED_ASSETS.filter(s => !typeNameToId[s.typeName]).map(s => s.typeName);
+
+    await Asset.deleteMany({});
+
+    const docs = SEED_ASSETS
+      .filter(s => typeNameToId[s.typeName])
+      .map(s => ({
+        typeId: typeNameToId[s.typeName],
+        name:   s.name,
+        status: s.status,
+        ...(s.rentedByUserId ? { rentedByUserId: s.rentedByUserId } : {}),
+        ...(s.returnDate     ? { returnDate:     s.returnDate }     : {}),
+      }));
+
+    const created = await Asset.insertMany(docs);
+    res.json({ assets: created.map(a => a.toJSON()), skipped });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus, requestRental, resetSeedAssets };

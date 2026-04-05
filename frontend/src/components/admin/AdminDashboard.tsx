@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import {
-  Package, Wrench, Clock, CheckCircle, ArrowRightLeft, Layers,
+  Package, Wrench, Clock, CheckCircle, ArrowRightLeft, Layers, User,
 } from 'lucide-react';
 import type { AdminTabProps } from '../../types/assets';
 import AssetManagementTab from './tabs/AssetManagementTab';
 import PendingRentalTab   from './tabs/PendingRentalTab';
 import RentedTab          from './tabs/RentedTab';
+import ProfileTab         from './tabs/ProfileTab';
 
 // ── Tab registry ──────────────────────────────────────────────────────────────
 // To add a new tab: add an entry here and create its component file.
@@ -35,6 +36,7 @@ const TABS: TabConfig[] = [
   { id: 'rented',          label: 'Rented',           icon: <CheckCircle size={16} />,    component: RentedTab },
   { id: 'pendingReturn',   label: 'Pending Return',   icon: <ArrowRightLeft size={16} />, component: makeStub('Pending Return Approvals') },
   { id: 'assetManagement', label: 'Asset Management', icon: <Layers size={16} />,         component: AssetManagementTab },
+  { id: 'profile',         label: 'Profile',          icon: <User   size={16} />,         component: ProfileTab },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────

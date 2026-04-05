@@ -38,6 +38,7 @@ export interface CustomerTabProps {
   assets:              Asset[];
   assetTypes:          AssetType[];
   productGroups:       ProductGroup[];
+  currentUserId:       string;
   requestRental:       (items: { typeId: string; quantity: number }[], returnDate: string) => Promise<void>;
   updateAssetStatuses: (ids: string[], status: AssetStatus, clearData?: boolean) => Promise<void>;
 }
@@ -57,4 +58,5 @@ export interface AdminTabProps {
   createAsset:          (typeId: string, name: string) => Promise<Asset>;
   createAssets:         (typeId: string, names: string[]) => Promise<Asset[]>;
   deleteAsset:          (id: string) => Promise<void>;
+  resetToSeedData:      () => Promise<{ skipped: string[] }>;
 }
