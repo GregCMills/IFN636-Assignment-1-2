@@ -32,6 +32,7 @@ jobs:
       - name: Run Backend Tests
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
+          TEST_MONGO_URI: ${{ secrets.TEST_MONGO_URI }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           PORT: ${{ secrets.PORT }}
         working-directory: ./backend
