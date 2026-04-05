@@ -19,28 +19,45 @@ const TaskList = ({ tasks, setTasks, setEditingTask }: TaskListProps) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTasks(tasks.filter((task) => task._id !== taskId));
-    } catch (error) {
+    } catch {
       alert('Failed to delete task.');
     }
   };
 
+  if (tasks.length === 0) {
+    return (
+      <div className="card p-8 text-center text-text-muted">
+        No tasks yet. Create one above.
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="space-y-3">
       {tasks.map((task) => (
-        <div key={task._id} className="bg-gray-100 p-4 mb-4 rounded shadow">
-          <h2 className="font-bold">{task.title}</h2>
-          <p>{task.description}</p>
-          <p className="text-sm text-gray-500">Deadline: {new Date(task.deadline).toLocaleDateString()}</p>
-          <div className="mt-2">
+        <div key={task._id} className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold text-text-primary truncate">{task.title}</h2>
+            <p className="text-sm text-text-secondary mt-0.5">{task.description}</p>
+            <p className="text-xs text-text-subtle mt-1">
+              Deadline: {new Date(task.deadline).toLocaleDateString()}
+            </p>
+          </div>
+
+          <div className="flex gap-2 shrink-0">
             <button
               onClick={() => setEditingTask(task)}
-              className="mr-2 bg-yellow-500 text-white px-4 py-2 rounded"
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors
+                         text-status-warning border-status-warning-dim
+                         hover:bg-status-warning-dim/40"
             >
               Edit
             </button>
             <button
               onClick={() => handleDelete(task._id)}
-              className="bg-red-500 text-white px-4 py-2 rounded"
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors
+                         text-status-danger border-status-danger-dim
+                         hover:bg-status-danger-dim/40"
             >
               Delete
             </button>

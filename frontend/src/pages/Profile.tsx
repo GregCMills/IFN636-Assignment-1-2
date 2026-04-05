@@ -28,19 +28,43 @@ const Profile = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4 text-center">Your Profile</h1>
-        <p className="mb-2">Name: {user?.fullName}</p>
-        <p className="mb-4">Email: {user?.primaryEmailAddress?.emailAddress}</p>
-        <input type="text" placeholder="University" value={formData.university}
-          onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-          className="w-full mb-4 p-2 border rounded" />
-        <input type="text" placeholder="Address" value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          className="w-full mb-4 p-2 border rounded" />
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">Update Profile</button>
-      </form>
+    <div className="max-w-md mx-auto mt-16 px-4">
+      <div className="card p-8">
+        <h1 className="text-2xl font-bold mb-6 text-text-primary">Your Profile</h1>
+
+        <div className="mb-6 space-y-1 border-b border-border-default pb-6">
+          <p className="text-sm text-text-muted">Name</p>
+          <p className="font-medium text-text-secondary">{user?.fullName ?? '—'}</p>
+          <p className="text-sm text-text-muted mt-3">Email</p>
+          <p className="font-medium text-text-secondary">{user?.primaryEmailAddress?.emailAddress ?? '—'}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-label mb-1">University</label>
+            <input
+              type="text"
+              placeholder="Your university"
+              value={formData.university}
+              onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+              className="input-base"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-label mb-1">Address</label>
+            <input
+              type="text"
+              placeholder="Your address"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="input-base"
+            />
+          </div>
+          <button type="submit" className="btn-primary w-full mt-2">
+            Update Profile
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

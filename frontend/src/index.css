@@ -1,1 +1,175 @@
 @import "tailwindcss";
+
+/*
+ * ================================================================
+ *  APPLICATION THEME — Tailwind v4
+ * ================================================================
+ *
+ *  All tokens defined below are available as Tailwind utilities.
+ *  Use the semantic name, not the underlying gray/indigo value.
+ *
+ *  SURFACES (background layers, darkest → lightest):
+ *    bg-surface-deep       Darkest bg  — auth screens, modal backdrops
+ *    bg-surface-base       Main app background
+ *    bg-surface-raised     Cards, sidebar, navbar
+ *    bg-surface-elevated   Input fields, hover states, nested sections
+ *
+ *  BRAND / ACCENT:
+ *    bg-brand              Primary buttons, focus rings
+ *    bg-brand-hover        Hover state for primary buttons
+ *    text-brand-light      Icons, active-tab indicators, accent text
+ *    text-brand-subtle     Light accent highlights
+ *    bg-brand-dim          Very-dark brand bg (e.g. active nav, tag chips)
+ *
+ *  TEXT (primary → most-muted):
+ *    text-text-primary     Main headings & body
+ *    text-text-secondary   Secondary labels, list item names
+ *    text-text-label       Form labels, column headers
+ *    text-text-muted       Placeholder-like metadata
+ *    text-text-subtle      Timestamps, IDs, dividers
+ *
+ *  BORDERS:
+ *    border-border-default Card and section borders  (gray-700)
+ *    border-border-strong  Input field borders        (gray-600)
+ *
+ *  STATUS — each has three tones: base, -text (lighter), -dim (dark bg):
+ *    status-success / status-success-text / status-success-dim   (green)
+ *    status-warning / status-warning-dim                         (yellow)
+ *    status-danger  / status-danger-text  / status-danger-dim    (red)
+ *    status-info    / status-info-text    / status-info-dim      (blue)
+ *
+ *  COMPONENT CLASSES (defined below in @layer components):
+ *    .btn-primary    Primary action button
+ *    .btn-ghost      Subtle secondary button
+ *    .input-base     Standard text / date input field
+ *    .card           Standard card container
+ *    .badge-available / .badge-rented / .badge-maintenance / .badge-pending
+ * ================================================================
+ */
+
+@theme {
+  /* ── Surfaces ─────────────────────────────────────────────── */
+  --color-surface-deep:         #030712;   /* gray-950 */
+  --color-surface-base:         #111827;   /* gray-900 */
+  --color-surface-raised:       #1f2937;   /* gray-800 */
+  --color-surface-elevated:     #374151;   /* gray-700 */
+
+  /* ── Brand / Accent ───────────────────────────────────────── */
+  --color-brand:                #4f46e5;   /* indigo-600 */
+  --color-brand-hover:          #6366f1;   /* indigo-500 */
+  --color-brand-light:          #818cf8;   /* indigo-400 */
+  --color-brand-subtle:         #a5b4fc;   /* indigo-300 */
+  --color-brand-dim:            #312e81;   /* indigo-900 */
+
+  /* ── Text ─────────────────────────────────────────────────── */
+  --color-text-primary:         #f3f4f6;   /* gray-100 */
+  --color-text-secondary:       #e5e7eb;   /* gray-200 */
+  --color-text-label:           #d1d5db;   /* gray-300 */
+  --color-text-muted:           #9ca3af;   /* gray-400 */
+  --color-text-subtle:          #6b7280;   /* gray-500 */
+
+  /* ── Borders ──────────────────────────────────────────────── */
+  --color-border-default:       #374151;   /* gray-700 */
+  --color-border-strong:        #4b5563;   /* gray-600 */
+
+  /* ── Status: Success (green) ──────────────────────────────── */
+  --color-status-success:       #4ade80;   /* green-400 */
+  --color-status-success-text:  #86efac;   /* green-300 */
+  --color-status-success-dim:   #14532d;   /* green-900 */
+
+  /* ── Status: Warning (yellow) ─────────────────────────────── */
+  --color-status-warning:       #fcd34d;   /* yellow-300 */
+  --color-status-warning-dim:   #78350f;   /* yellow-900 */
+
+  /* ── Status: Danger (red) ─────────────────────────────────── */
+  --color-status-danger:        #f87171;   /* red-400  */
+  --color-status-danger-text:   #fca5a5;   /* red-300  */
+  --color-status-danger-dim:    #7f1d1d;   /* red-900  */
+
+  /* ── Status: Info (blue) ──────────────────────────────────── */
+  --color-status-info:          #93c5fd;   /* blue-300 */
+  --color-status-info-text:     #60a5fa;   /* blue-400 */
+  --color-status-info-dim:      #1e3a8a;   /* blue-900 */
+}
+
+/* ── Base layer — global defaults ─────────────────────────────── */
+@layer base {
+  body {
+    @apply bg-surface-base text-text-primary font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar              { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track        { background: var(--color-surface-raised); }
+  ::-webkit-scrollbar-thumb        { background: var(--color-surface-elevated); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover  { background: var(--color-brand-light); }
+
+  /* Text selection */
+  ::selection { background: var(--color-brand-dim); color: var(--color-brand-subtle); }
+}
+
+/* ── Component layer — reusable UI primitives ─────────────────── */
+@layer components {
+
+  /* Primary action button — indigo fill */
+  .btn-primary {
+    @apply bg-brand text-white px-4 py-2 rounded-lg font-medium
+           hover:bg-brand-hover transition-colors shadow-sm
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Ghost / secondary button — surface fill */
+  .btn-ghost {
+    @apply bg-surface-elevated text-text-secondary border border-border-default
+           px-4 py-2 rounded-lg font-medium hover:brightness-110 transition-all;
+  }
+
+  /* Standard form input */
+  .input-base {
+    @apply w-full px-4 py-2 bg-surface-elevated border border-border-strong
+           text-text-primary rounded-lg focus:ring-2 focus:ring-brand outline-none
+           placeholder:text-text-subtle transition-colors;
+  }
+
+  /* Standard card container */
+  .card {
+    @apply bg-surface-raised border border-border-default rounded-xl shadow-sm;
+  }
+
+  /* ── Status badges ─────────────────────────────────────────── */
+
+  .badge-available {
+    background: color-mix(in srgb, var(--color-status-success-dim) 40%, transparent);
+    color: var(--color-status-success);
+    border: 1px solid color-mix(in srgb, var(--color-status-success) 40%, transparent);
+    @apply text-xs px-2 py-0.5 rounded-full font-medium;
+  }
+
+  .badge-rented {
+    background: color-mix(in srgb, var(--color-status-info-dim) 40%, transparent);
+    color: var(--color-status-info);
+    border: 1px solid color-mix(in srgb, var(--color-status-info) 40%, transparent);
+    @apply text-xs px-2 py-0.5 rounded-full font-medium;
+  }
+
+  .badge-maintenance {
+    @apply bg-surface-elevated text-text-label border border-border-default
+           text-xs px-2 py-0.5 rounded-full font-medium;
+  }
+
+  .badge-pending {
+    background: color-mix(in srgb, var(--color-status-warning-dim) 40%, transparent);
+    color: var(--color-status-warning);
+    border: 1px solid color-mix(in srgb, var(--color-status-warning) 40%, transparent);
+    @apply text-xs px-2 py-0.5 rounded-full font-medium;
+  }
+
+  .badge-danger {
+    background: color-mix(in srgb, var(--color-status-danger-dim) 40%, transparent);
+    color: var(--color-status-danger);
+    border: 1px solid color-mix(in srgb, var(--color-status-danger) 40%, transparent);
+    @apply text-xs px-2 py-0.5 rounded-full font-medium;
+  }
+}

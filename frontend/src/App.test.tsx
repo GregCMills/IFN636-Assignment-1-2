@@ -30,6 +30,6 @@ test('renders the navbar', () => {
       <App />
     </MemoryRouter>
   );
-  const navLink = screen.getByText(/Rental Equipment Application/i);
+  const navLink = screen.getByText(/Login/i);
   expect(navLink).toBeInTheDocument();
 });
