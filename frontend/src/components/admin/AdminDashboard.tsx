@@ -5,6 +5,7 @@ import {
 import type { AdminTabProps } from '../../types/assets';
 import AssetManagementTab from './tabs/AssetManagementTab';
 import MaintenanceTab     from './tabs/MaintenanceTab';
+import OverviewTab        from './tabs/OverviewTab';
 import PendingRentalTab   from './tabs/PendingRentalTab';
 import PendingReturnTab   from './tabs/PendingReturnTab';
 import RentedTab          from './tabs/RentedTab';
@@ -19,19 +20,9 @@ interface TabConfig {
   component: React.ComponentType<AdminTabProps>;
 }
 
-/** Placeholder for tabs that are not yet implemented. */
-const ComingSoon = ({ label }: { label: string }) => (
-  <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-    <p className="text-text-muted text-lg font-medium">{label}</p>
-    <p className="text-text-subtle text-sm">This tab will be implemented when the backend is connected.</p>
-  </div>
-);
-
-const makeStub = (label: string): React.ComponentType<AdminTabProps> =>
-  () => <ComingSoon label={label} />;
 
 const TABS: TabConfig[] = [
-  { id: 'available',       label: 'Available',        icon: <Package size={16} />,        component: makeStub('Available Assets') },
+  { id: 'overview',       label: 'Overview',         icon: <Package size={16} />,        component: OverviewTab },
   { id: 'maintenance',     label: 'Maintenance',      icon: <Wrench size={16} />,         component: MaintenanceTab },
   { id: 'pendingRental',   label: 'Pending Rental',   icon: <Clock size={16} />,          component: PendingRentalTab },
   { id: 'rented',          label: 'Rented',           icon: <CheckCircle size={16} />,    component: RentedTab },
