@@ -6,6 +6,7 @@ import { groupBy } from '../../../utils/helpers';
 const MaintenanceTab = ({
   assets,
   assetTypes,
+  productGroups,
   updateAssetStatuses,
 }: AdminTabProps) => {
   const [submitting, setSubmitting] = useState(false);
@@ -15,6 +16,9 @@ const MaintenanceTab = ({
 
   const getTypeName = (id: string) =>
     assetTypes.find(t => t.id === id)?.name ?? 'Unknown Product';
+
+  const getGroupName = (id: string) =>
+    productGroups.find(g => g.id === id)?.name ?? 'Unknown Type';
 
   const withAction = async (fn: () => Promise<void>) => {
     setSubmitting(true);
@@ -44,7 +48,10 @@ const MaintenanceTab = ({
     );
   }
 
-  const groupedByType = groupBy(maintenance, a => a.typeId);
+  const groupedByProductType = groupBy(
+    maintenance,
+    a => assetTypes.find(t => t.id === a.typeId)?.groupId ?? 'unknown',
+  );
 
   return (
     <>
@@ -55,24 +62,25 @@ const MaintenanceTab = ({
       )}
 
       <div className="space-y-6">
-        {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
-          const typeName   = getTypeName(typeId);
-          const allTypeIds = typeAssets.map(a => a.id);
+        {Object.entries(groupedByProductType).map(([groupId, groupAssets]) => {
+          const groupName    = getGroupName(groupId);
+          const allGroupIds  = groupAssets.map(a => a.id);
+          const groupedByType = groupBy(groupAssets, a => a.typeId);
 
           return (
-            <div key={typeId} className="card overflow-hidden">
+            <div key={groupId} className="card overflow-hidden">
               <div className="bg-surface-elevated/30 px-6 py-4 border-b border-border-default flex flex-wrap justify-between items-center gap-3">
                 <h3 className="font-bold text-text-primary text-lg flex items-center gap-2">
                   <Wrench size={18} className="text-status-warning" />
-                  {typeName}
+                  {groupName}
                 </h3>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="badge-maintenance">
-                    {typeAssets.length} unit{typeAssets.length !== 1 ? 's' : ''}
+                    {groupAssets.length} unit{groupAssets.length !== 1 ? 's' : ''}
                   </span>
-                  {typeAssets.length > 1 && (
+                  {groupAssets.length > 1 && (
                     <button
-                      onClick={() => handleMarkAvailable(allTypeIds)}
+                      onClick={() => handleMarkAvailable(allGroupIds)}
                       disabled={submitting}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
                                  bg-status-success-dim/40 border border-status-success/30 text-status-success
@@ -84,25 +92,55 @@ const MaintenanceTab = ({
                 </div>
               </div>
 
-              <div className="p-6 space-y-2">
-                {typeAssets.map(asset => (
-                  <div
-                    key={asset.id}
-                    className="flex flex-wrap sm:flex-nowrap sm:items-center justify-between gap-3
-                               bg-surface-elevated/20 border border-border-default p-3 rounded-lg"
-                  >
-                    <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
-                    <button
-                      onClick={() => handleMarkAvailable([asset.id])}
-                      disabled={submitting}
-                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
-                                 bg-status-success-dim/40 border border-status-success/30 text-status-success
-                                 hover:bg-status-success-dim/70 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Check size={12} /> Mark Available
-                    </button>
-                  </div>
-                ))}
+              <div className="p-6 space-y-6">
+                {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
+                  const typeName   = getTypeName(typeId);
+                  const allTypeIds = typeAssets.map(a => a.id);
+
+                  return (
+                    <div key={typeId} className="border-l-4 border-status-warning/40 pl-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h4 className="font-bold text-text-secondary">{typeName}</h4>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="badge-maintenance">
+                            {typeAssets.length} unit{typeAssets.length !== 1 ? 's' : ''}
+                          </span>
+                          {typeAssets.length > 1 && (
+                            <button
+                              onClick={() => handleMarkAvailable(allTypeIds)}
+                              disabled={submitting}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
+                                         bg-status-success-dim/40 border border-status-success/30 text-status-success
+                                         hover:bg-status-success-dim/70 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Check size={12} /> Mark All Available
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {typeAssets.map(asset => (
+                          <div
+                            key={asset.id}
+                            className="flex flex-wrap sm:flex-nowrap sm:items-center justify-between gap-3
+                                       bg-surface-elevated/20 border border-border-default p-3 rounded-lg"
+                          >
+                            <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
+                            <button
+                              onClick={() => handleMarkAvailable([asset.id])}
+                              disabled={submitting}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
+                                         bg-status-success-dim/40 border border-status-success/30 text-status-success
+                                         hover:bg-status-success-dim/70 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Check size={12} /> Mark Available
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

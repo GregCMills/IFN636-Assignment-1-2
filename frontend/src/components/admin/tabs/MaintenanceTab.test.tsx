@@ -7,14 +7,19 @@ import type { AdminTabProps } from '../../../types/assets';
 
 const assetTypes = [
   { id: 't1', groupId: 'g1', name: 'MacBook Air M2' },
-  { id: 't2', groupId: 'g1', name: 'Sony Camera' },
+  { id: 't2', groupId: 'g2', name: 'Sony Camera' },
+];
+
+const productGroups = [
+  { id: 'g1', name: 'Laptops' },
+  { id: 'g2', name: 'Cameras' },
 ];
 
 const makeProps = (overrides: Partial<AdminTabProps> = {}): AdminTabProps => ({
   users:               [],
   assets:              [],
   assetTypes,
-  productGroups:       [],
+  productGroups,
   updateAssetStatuses: vi.fn().mockResolvedValue(undefined),
   createProductGroup:  vi.fn().mockResolvedValue({ id: 'x', name: 'X' }),
   deleteProductGroup:  vi.fn().mockResolvedValue(undefined),
@@ -62,6 +67,13 @@ describe('MaintenanceTab — content rendering', () => {
     expect(screen.getByText('MacBook Air M2')).toBeInTheDocument();
   });
 
+  it('shows the product group name as the outer section heading', () => {
+    render(<MaintenanceTab {...makeProps({
+      assets: [{ id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Maintenance' }],
+    })} />);
+    expect(screen.getByText('Laptops')).toBeInTheDocument();
+  });
+
   it('shows the unit name inside the asset row', () => {
     render(<MaintenanceTab {...makeProps({
       assets: [{ id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Maintenance' }],
@@ -76,14 +88,16 @@ describe('MaintenanceTab — content rendering', () => {
         { id: 'a2', typeId: 't1', name: 'Unit 002', status: 'Maintenance' },
       ],
     })} />);
-    expect(screen.getByText('2 units')).toBeInTheDocument();
+    // "2 units" appears at both the product-type (group) level and the asset-type level
+    expect(screen.getAllByText('2 units').length).toBeGreaterThanOrEqual(1);
   });
 
   it('uses "unit" (singular) in the badge when there is exactly one asset', () => {
     render(<MaintenanceTab {...makeProps({
       assets: [{ id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Maintenance' }],
     })} />);
-    expect(screen.getByText('1 unit')).toBeInTheDocument();
+    // "1 unit" appears at both the product-type (group) level and the asset-type level
+    expect(screen.getAllByText('1 unit').length).toBeGreaterThanOrEqual(1);
   });
 
   it('groups assets of the same type under one section heading', () => {
@@ -125,7 +139,8 @@ describe('MaintenanceTab — bulk action button', () => {
         { id: 'a2', typeId: 't1', name: 'Unit 002', status: 'Maintenance' },
       ],
     })} />);
-    expect(screen.getByRole('button', { name: /mark all available/i })).toBeInTheDocument();
+    // Appears at both the product-type level and the asset-type level
+    expect(screen.getAllByRole('button', { name: /mark all available/i }).length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -156,7 +171,8 @@ describe('MaintenanceTab — interactions', () => {
       updateAssetStatuses,
     })} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /mark all available/i }));
+    // Click the first "Mark All Available" (product-type level)
+    await userEvent.click(screen.getAllByRole('button', { name: /mark all available/i })[0]);
 
     await waitFor(() => {
       expect(updateAssetStatuses).toHaveBeenCalledWith(['a1', 'a2'], 'Available');
