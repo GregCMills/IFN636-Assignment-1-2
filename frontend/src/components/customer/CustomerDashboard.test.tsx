@@ -55,13 +55,14 @@ describe('CustomerDashboard — tab switching', () => {
     expect(screen.getByText(/no active rentals/i)).toBeInTheDocument();
   });
 
-  it('switching to "Pending" hides the catalogue and shows the coming-soon placeholder', async () => {
+  it('switching to "Pending" hides the catalogue and shows the Pending tab', async () => {
     const user = userEvent.setup();
     render(<CustomerDashboard {...makeProps()} />);
     await user.click(screen.getByRole('button', { name: /^pending$/i }));
 
     expect(screen.queryByRole('heading', { name: 'Laptops' })).not.toBeInTheDocument();
-    expect(screen.getByText('This tab will be available soon.')).toBeInTheDocument();
+    expect(screen.getByText('No pending rental requests.')).toBeInTheDocument();
+    expect(screen.getByText('No pending return requests.')).toBeInTheDocument();
   });
 
   it('switching back to Browse restores the catalogue', async () => {
