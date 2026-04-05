@@ -4,6 +4,9 @@ import type { AdminTabProps } from '../../../types/assets';
 import ConfirmModal from '../../ConfirmModal';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
 import EmptyState from '../../ui/EmptyState';
+import InlineErrorBanner from '../../ui/InlineErrorBanner';
+import GroupedCard from '../../ui/GroupedCard';
+import AssetRow from '../../ui/AssetRow';
 
 interface PendingDeny {
   ids: string[];
@@ -74,11 +77,7 @@ const PendingRentalTab = ({
 
   return (
     <>
-      {apiError && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-status-danger-dim/40 border border-status-danger/30 text-status-danger text-sm">
-          {apiError}
-        </div>
-      )}
+      <InlineErrorBanner message={apiError} className="mb-4" />
 
       <div className="space-y-6">
         {Object.entries(groupedByUser).map(([userId, userAssets]) => {
@@ -87,9 +86,9 @@ const PendingRentalTab = ({
           const userLabel     = getUserLabel(userAssets);
 
           return (
-            <div key={userId} className="card overflow-hidden">
-              {/* User-level header with bulk actions */}
-              <div className="bg-surface-elevated/30 px-6 py-4 border-b border-border-default flex flex-wrap justify-between items-center gap-3">
+            <GroupedCard
+              key={userId}
+              header={<>
                 <h3 className="font-bold text-text-primary text-lg flex items-center gap-2">
                   <Users size={18} className="text-brand-light" />
                   {userLabel}
@@ -119,16 +118,14 @@ const PendingRentalTab = ({
                     <X size={14} /> Deny All
                   </button>
                 </div>
-              </div>
-
-              <div className="p-6 space-y-6">
-                {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
+              </>}
+            >
+              {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
                   const allTypeIds = typeAssets.map(a => a.id);
                   const typeName   = getTypeName(typeId);
 
                   return (
                     <div key={typeId} className="border-l-4 border-brand/40 pl-4">
-                      {/* Type-level header with bulk actions (only shown when >1 unit) */}
                       <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
                         <h4 className="font-bold text-text-secondary">{typeName}</h4>
                         {typeAssets.length > 1 && (
@@ -160,14 +157,9 @@ const PendingRentalTab = ({
                         )}
                       </div>
 
-                      {/* Individual asset rows */}
                       <div className="space-y-2">
                         {typeAssets.map(asset => (
-                          <div
-                            key={asset.id}
-                            className="flex flex-wrap sm:flex-nowrap sm:items-center justify-between gap-3
-                                       bg-surface-elevated/20 border border-border-default p-3 rounded-lg"
-                          >
+                          <AssetRow key={asset.id}>
                             <div className="flex items-center flex-wrap gap-2">
                               <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
                               {asset.returnDate && (
@@ -197,14 +189,13 @@ const PendingRentalTab = ({
                                 <X size={12} /> Deny
                               </button>
                             </div>
-                          </div>
+                          </AssetRow>
                         ))}
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            </div>
+            </GroupedCard>
           );
         })}
       </div>

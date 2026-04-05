@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Clock, ArrowRightLeft, Calendar, Layers } from 'lucide-react';
 import type { CustomerTabProps } from '../../../types/assets';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
+import InlineErrorBanner from '../../ui/InlineErrorBanner';
 
 const PendingTab = ({
   assets,
@@ -123,11 +124,7 @@ const PendingTab = ({
 
   return (
     <div className="space-y-10">
-      {apiError && (
-        <div className="px-4 py-3 rounded-lg bg-status-danger-dim/40 border border-status-danger/30 text-status-danger text-sm">
-          {apiError}
-        </div>
-      )}
+      <InlineErrorBanner message={apiError} />
 
       <section>
         <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
