@@ -24,7 +24,7 @@ vi.mock('@clerk/clerk-react', () => ({
   SignUp: () => <div>Sign Up</div>,
 }));
 
-test('renders the navbar', () => {
+test('renders the login', () => {
   render(
     <MemoryRouter>
       <App />
