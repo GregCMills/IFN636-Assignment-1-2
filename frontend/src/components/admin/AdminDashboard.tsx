@@ -33,7 +33,7 @@ const TABS: TabConfig[] = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const AdminDashboard = (props: AdminTabProps) => {
-  const [activeTabId, setActiveTabId] = useState('assetManagement');
+  const [activeTabId, setActiveTabId] = useState('overview');
 
   const activeTab = TABS.find(t => t.id === activeTabId) ?? TABS[TABS.length - 1];
   const ActiveComponent = activeTab.component;
