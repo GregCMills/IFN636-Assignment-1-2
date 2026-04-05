@@ -5,7 +5,7 @@ import axiosInstance from '../axiosConfig';
 const Profile = () => {
   const { user } = useUser();
   const { getToken } = useAuth();
-  const [formData, setFormData] = useState({ university: '', address: '' });
+  const [formData, setFormData] = useState({ address: '', phone: '' });
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -13,7 +13,7 @@ const Profile = () => {
       const res = await axiosInstance.get('/api/auth/profile', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setFormData({ university: res.data.university || '', address: res.data.address || '' });
+      setFormData({ address: res.data.address || '', phone: res.data.phone || '' });
     };
     if (user) fetchProfile();
   }, [user]);
@@ -41,22 +41,22 @@ const Profile = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-label mb-1">University</label>
-            <input
-              type="text"
-              placeholder="Your university"
-              value={formData.university}
-              onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-              className="input-base"
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-text-label mb-1">Address</label>
             <input
               type="text"
               placeholder="Your address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="input-base"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-label mb-1">Phone Number</label>
+            <input
+              type="tel"
+              placeholder="Your phone number"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               className="input-base"
             />
           </div>

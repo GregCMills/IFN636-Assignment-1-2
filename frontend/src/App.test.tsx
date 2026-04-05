@@ -18,18 +18,17 @@ vi.mock('axios', () => ({
 vi.mock('@clerk/clerk-react', () => ({
   ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useAuth: () => ({ isSignedIn: false, getToken: vi.fn() }),
-  useUser: () => ({ isSignedIn: false, user: null }),
+  useUser: () => ({ isLoaded: true, isSignedIn: false, user: null }),
   useClerk: () => ({ signOut: vi.fn() }),
   SignIn: () => <div>Sign In</div>,
   SignUp: () => <div>Sign Up</div>,
 }));
 
-test('renders the login', () => {
+test('unauthenticated users are redirected to the sign-in page', () => {
   render(
     <MemoryRouter>
       <App />
     </MemoryRouter>
   );
-  const navLink = screen.getByText(/Login/i);
-  expect(navLink).toBeInTheDocument();
+  expect(screen.getByText(/Sign in:/i)).toBeInTheDocument();
 });
