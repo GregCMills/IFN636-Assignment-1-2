@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/AppLayout';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
-import Tasks from './pages/Tasks';
 import Dashboard from './pages/Dashboard';
 
 function App() {
@@ -16,7 +15,6 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile"   element={<Profile />} />
-        <Route path="/tasks"     element={<Tasks />} />
       </Route>
     </Routes>
   );
