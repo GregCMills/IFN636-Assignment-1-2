@@ -1,100 +1,198 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
-import { generateId } from '../../../utils/helpers';
+import ConfirmModal from '../../ConfirmModal';
+
+interface PendingDelete {
+  action: () => Promise<void>;
+  title: string;
+  message: string;
+  detail: string;
+}
 
 const statusBadgeClass = (status: string): string => {
   switch (status) {
-    case 'Available':      return 'badge-available';
-    case 'Rented':         return 'badge-rented';
-    case 'Maintenance':    return 'badge-maintenance';
-    default:               return 'badge-pending';
+    case 'Available':   return 'badge-available';
+    case 'Rented':      return 'badge-rented';
+    case 'Maintenance': return 'badge-maintenance';
+    default:            return 'badge-pending';
   }
 };
 
 const AssetManagementTab = ({
   productGroups,
-  setProductGroups,
   assetTypes,
-  setAssetTypes,
   assets,
-  setAssets,
+  createProductGroup,
+  deleteProductGroup,
+  createAssetType,
+  deleteAssetType,
+  createAssets,
+  deleteAsset,
 }: AdminTabProps) => {
-  // --- Step 1: Product Group ---
-  const [newGroupName, setNewGroupName]       = useState('');
+  const [newGroupName,    setNewGroupName]    = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(productGroups[0]?.id ?? null);
+  const [newTypeName,     setNewTypeName]     = useState('');
+  const [selectedTypeId,  setSelectedTypeId]  = useState<string | null>(null);
+  const [unitPrefix,      setUnitPrefix]      = useState('Unit');
+  const [unitQty,         setUnitQty]         = useState(1);
+  const [submitting,      setSubmitting]      = useState(false);
+  const [apiError,        setApiError]        = useState('');
+  const [pendingDelete,   setPendingDelete]   = useState<PendingDelete | null>(null);
 
-  // --- Step 2: Product (Asset Type) ---
-  const [newTypeName, setNewTypeName]       = useState('');
-  const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
-
-  // --- Step 3: Individual Unit ---
-  const [newUnitName, setNewUnitName] = useState('');
-
-  // Keep selectedTypeId in sync when the selected group changes
+  // Keep selectedTypeId in sync when selected group changes
   useEffect(() => {
     const firstType = assetTypes.find(t => t.groupId === selectedGroupId);
     setSelectedTypeId(firstType?.id ?? null);
   }, [selectedGroupId, assetTypes]);
 
-  // --- Group handlers ---
+  // Seed the initial selected group once data loads
+  useEffect(() => {
+    if (!selectedGroupId && productGroups.length > 0) {
+      setSelectedGroupId(productGroups[0].id);
+    }
+  }, [productGroups, selectedGroupId]);
+
+  // Update prefix to first 3 letters of the selected product name
+  useEffect(() => {
+    const typeName = assetTypes.find(t => t.id === selectedTypeId)?.name ?? '';
+    if (typeName) setUnitPrefix(typeName.slice(0, 3).toUpperCase());
+  }, [selectedTypeId, assetTypes]);
+
+  const withSubmit = async (fn: () => Promise<void>) => {
+    setSubmitting(true);
+    setApiError('');
+    try {
+      await fn();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'An error occurred';
+      setApiError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Group handlers ─────────────────────────────────────────────────────────
+
   const handleAddGroup = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
-    const group = { id: generateId(), name: newGroupName.trim() };
-    setProductGroups(prev => [...prev, group]);
-    setNewGroupName('');
-    if (!selectedGroupId) setSelectedGroupId(group.id);
+    withSubmit(async () => {
+      const group = await createProductGroup(newGroupName.trim());
+      setNewGroupName('');
+      setSelectedGroupId(prev => prev ?? group.id);
+    });
   };
 
   const handleDeleteGroup = (id: string) => {
-    if (assetTypes.some(t => t.groupId === id)) {
-      alert('Cannot delete: products exist in this group.');
+    const typesInside = assetTypes.filter(t => t.groupId === id);
+    const unitCount   = assets.filter(a => typesInside.some(t => t.id === a.typeId)).length;
+    const group       = productGroups.find(g => g.id === id);
+
+    const doDelete = async () => {
+      await deleteProductGroup(id);
+      if (selectedGroupId === id) setSelectedGroupId(productGroups.find(g => g.id !== id)?.id ?? null);
+    };
+
+    if (typesInside.length === 0) {
+      withSubmit(doDelete);
       return;
     }
-    setProductGroups(prev => prev.filter(g => g.id !== id));
-    if (selectedGroupId === id) setSelectedGroupId(productGroups[0]?.id ?? null);
+
+    setPendingDelete({
+      action: doDelete,
+      title:  `Delete "${group?.name}"?`,
+      message: 'This group is not empty. Deleting it will permanently remove:',
+      detail: [
+        `${typesInside.length} product${typesInside.length !== 1 ? 's' : ''}`,
+        unitCount > 0 ? `${unitCount} unit${unitCount !== 1 ? 's' : ''}` : '',
+      ].filter(Boolean).join(' and '),
+    });
   };
 
-  // --- Type handlers ---
+  // ── Type handlers ──────────────────────────────────────────────────────────
+
   const handleAddType = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTypeName.trim() || !selectedGroupId) return;
-    const type = { id: generateId(), groupId: selectedGroupId, name: newTypeName.trim() };
-    setAssetTypes(prev => [...prev, type]);
-    setNewTypeName('');
-    if (!selectedTypeId) setSelectedTypeId(type.id);
+    withSubmit(async () => {
+      const type = await createAssetType(selectedGroupId, newTypeName.trim());
+      setNewTypeName('');
+      setSelectedTypeId(prev => prev ?? type.id);
+    });
   };
 
   const handleDeleteType = (id: string) => {
-    if (assets.some(a => a.typeId === id)) {
-      alert('Cannot delete: units exist under this product.');
+    const unitsInside = assets.filter(a => a.typeId === id);
+    const type        = assetTypes.find(t => t.id === id);
+
+    const doDelete = async () => {
+      await deleteAssetType(id);
+      if (selectedTypeId === id) setSelectedTypeId(null);
+    };
+
+    if (unitsInside.length === 0) {
+      withSubmit(doDelete);
       return;
     }
-    setAssetTypes(prev => prev.filter(t => t.id !== id));
-    if (selectedTypeId === id) setSelectedTypeId(null);
+
+    setPendingDelete({
+      action: doDelete,
+      title:  `Delete "${type?.name}"?`,
+      message: 'This product has units assigned to it. Deleting it will permanently remove:',
+      detail: `${unitsInside.length} unit${unitsInside.length !== 1 ? 's' : ''}`,
+    });
   };
 
-  // --- Unit handlers ---
+  // ── Unit helpers ──────────────────────────────────────────────────────────
+
+  /** Find the highest trailing number across all units in the current type. */
+  const nextUnitNumber = (typeId: string | null): number => {
+    if (!typeId) return 1;
+    const existing = assets.filter(a => a.typeId === typeId);
+    const max = existing.reduce((hi, unit) => {
+      const m = unit.name.match(/(\d+)$/);
+      return m ? Math.max(hi, parseInt(m[1], 10)) : hi;
+    }, 0);
+    return max + 1;
+  };
+
+  const fmtUnitName = (prefix: string, n: number) =>
+    `${prefix.trim()} ${String(n).padStart(3, '0')}`;
+
+  // ── Unit handlers ──────────────────────────────────────────────────────────
+
   const handleAddUnit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUnitName.trim() || !selectedTypeId) return;
-    const unit = { id: generateId(), typeId: selectedTypeId, name: newUnitName.trim(), status: 'Available' as const };
-    setAssets(prev => [...prev, unit]);
-    setNewUnitName('');
+    if (!selectedTypeId || !unitPrefix.trim()) return;
+    withSubmit(async () => {
+      const start = nextUnitNumber(selectedTypeId);
+      const names = Array.from({ length: unitQty }, (_, i) =>
+        fmtUnitName(unitPrefix, start + i)
+      );
+      await createAssets(selectedTypeId, names);
+    });
   };
 
   const handleDeleteUnit = (id: string) => {
-    setAssets(prev => prev.filter(a => a.id !== id));
+    withSubmit(async () => {
+      await deleteAsset(id);
+    });
   };
 
-  const typesInGroup   = assetTypes.filter(t => t.groupId === selectedGroupId);
-  const unitsInType    = assets.filter(a => a.typeId === selectedTypeId);
-  const selectedGroup  = productGroups.find(g => g.id === selectedGroupId);
-  const selectedType   = assetTypes.find(t => t.id === selectedTypeId);
+  const typesInGroup  = assetTypes.filter(t => t.groupId === selectedGroupId);
+  const unitsInType   = assets.filter(a => a.typeId === selectedTypeId);
+  const selectedGroup = productGroups.find(g => g.id === selectedGroupId);
+  const selectedType  = assetTypes.find(t => t.id === selectedTypeId);
 
   return (
     <div className="flex flex-col gap-6">
+
+      {apiError && (
+        <div className="bg-status-danger-dim/40 border border-status-danger/30 text-status-danger px-4 py-3 rounded-lg text-sm">
+          {apiError}
+        </div>
+      )}
 
       {/* ── Step 1: Product Group ──────────────────────────────────── */}
       <section className="card p-6">
@@ -107,8 +205,9 @@ const AssetManagementTab = ({
             value={newGroupName}
             onChange={e => setNewGroupName(e.target.value)}
             className="input-base flex-1 text-sm"
+            disabled={submitting}
           />
-          <button type="submit" className="btn-primary p-2">
+          <button type="submit" className="btn-primary p-2" disabled={submitting}>
             <Plus size={20} />
           </button>
         </form>
@@ -128,12 +227,16 @@ const AssetManagementTab = ({
               <button
                 onClick={e => { e.stopPropagation(); handleDeleteGroup(group.id); }}
                 className="text-text-subtle hover:text-status-danger transition shrink-0 ml-2"
+                disabled={submitting}
                 title="Delete group"
               >
                 <Trash2 size={15} />
               </button>
             </div>
           ))}
+          {productGroups.length === 0 && (
+            <p className="text-text-subtle text-sm col-span-full">No groups yet. Add one above.</p>
+          )}
         </div>
       </section>
 
@@ -142,9 +245,7 @@ const AssetManagementTab = ({
         <h2 className="text-xl font-bold text-text-primary mb-4">
           2. Select Product
           {selectedGroup && (
-            <span className="text-text-muted font-normal text-base ml-2">
-              in {selectedGroup.name}
-            </span>
+            <span className="text-text-muted font-normal text-base ml-2">in {selectedGroup.name}</span>
           )}
         </h2>
 
@@ -157,8 +258,9 @@ const AssetManagementTab = ({
                 value={newTypeName}
                 onChange={e => setNewTypeName(e.target.value)}
                 className="input-base flex-1 text-sm"
+                disabled={submitting}
               />
-              <button type="submit" className="btn-primary p-2">
+              <button type="submit" className="btn-primary p-2" disabled={submitting}>
                 <Plus size={20} />
               </button>
             </form>
@@ -179,6 +281,7 @@ const AssetManagementTab = ({
                     <button
                       onClick={e => { e.stopPropagation(); handleDeleteType(type.id); }}
                       className="text-text-subtle hover:text-status-danger transition shrink-0 ml-2"
+                      disabled={submitting}
                       title="Delete product"
                     >
                       <Trash2 size={15} />
@@ -200,24 +303,53 @@ const AssetManagementTab = ({
         <h2 className="text-xl font-bold text-text-primary mb-4">
           3. Manage Units
           {selectedType && (
-            <span className="text-text-muted font-normal text-base ml-2">
-              for {selectedType.name}
-            </span>
+            <span className="text-text-muted font-normal text-base ml-2">for {selectedType.name}</span>
           )}
         </h2>
 
         {selectedTypeId ? (
           <>
-            <form onSubmit={handleAddUnit} className="flex gap-2 mb-6 max-w-lg">
-              <input
-                type="text"
-                placeholder="Unit identifier / serial no…"
-                value={newUnitName}
-                onChange={e => setNewUnitName(e.target.value)}
-                className="input-base flex-1 text-sm"
-              />
-              <button type="submit" className="btn-primary flex items-center gap-2 px-4 text-sm whitespace-nowrap">
-                <Plus size={16} /> Add Unit
+            {/* Add units form */}
+            <form onSubmit={handleAddUnit} className="flex flex-wrap items-end gap-3 mb-6 max-w-2xl">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-text-muted">Name Prefix</label>
+                <input
+                  type="text"
+                  value={unitPrefix}
+                  onChange={e => setUnitPrefix(e.target.value)}
+                  className="input-base w-28 text-sm"
+                  disabled={submitting}
+                  placeholder="Unit"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-text-muted">Next ID</label>
+                <div className="input-base w-28 text-sm text-text-subtle select-none pointer-events-none">
+                  {fmtUnitName(unitPrefix || 'Unit', nextUnitNumber(selectedTypeId))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-text-muted">Quantity</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={unitQty}
+                  onChange={e => setUnitQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="input-base w-20 text-sm"
+                  disabled={submitting}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn-primary flex items-center gap-2 px-4 text-sm whitespace-nowrap"
+                disabled={submitting || !unitPrefix.trim()}
+              >
+                <Plus size={16} />
+                Add {unitQty > 1 ? `${unitQty} Units` : 'Unit'}
               </button>
             </form>
 
@@ -235,6 +367,7 @@ const AssetManagementTab = ({
                     <button
                       onClick={() => handleDeleteUnit(unit.id)}
                       className="text-text-subtle hover:text-status-danger transition p-1 shrink-0 ml-2"
+                      disabled={submitting}
                       title="Delete unit"
                     >
                       <Trash2 size={18} />
@@ -252,6 +385,20 @@ const AssetManagementTab = ({
           <p className="text-text-muted text-sm">Select a product above to manage its units.</p>
         )}
       </section>
+
+      <ConfirmModal
+        isOpen={!!pendingDelete}
+        title={pendingDelete?.title ?? ''}
+        message={pendingDelete?.message ?? ''}
+        detail={pendingDelete?.detail}
+        confirmLabel="Yes, delete all"
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          setPendingDelete(null);
+          withSubmit(pendingDelete.action);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
 
     </div>
   );

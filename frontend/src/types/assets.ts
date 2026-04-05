@@ -1,5 +1,3 @@
-import type React from 'react';
-
 export type AssetStatus =
   | 'Available'
   | 'Rented'
@@ -39,12 +37,13 @@ export interface AdminTabProps {
   assets: Asset[];
   assetTypes: AssetType[];
   productGroups: ProductGroup[];
-  setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
-  setAssetTypes: React.Dispatch<React.SetStateAction<AssetType[]>>;
-  setProductGroups: React.Dispatch<React.SetStateAction<ProductGroup[]>>;
-  updateAssetStatuses: (
-    assetIds: string[],
-    newStatus: AssetStatus,
-    clearData?: boolean
-  ) => void;
+  // Async actions — call the API and update parent state
+  updateAssetStatuses:  (ids: string[], status: AssetStatus, clearData?: boolean) => Promise<void>;
+  createProductGroup:   (name: string) => Promise<ProductGroup>;
+  deleteProductGroup:   (id: string) => Promise<void>;
+  createAssetType:      (groupId: string, name: string) => Promise<AssetType>;
+  deleteAssetType:      (id: string) => Promise<void>;
+  createAsset:          (typeId: string, name: string) => Promise<Asset>;
+  createAssets:         (typeId: string, names: string[]) => Promise<Asset[]>;
+  deleteAsset:          (id: string) => Promise<void>;
 }
