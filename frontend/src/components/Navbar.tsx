@@ -11,28 +11,56 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-blue-600 text-white p-4 flex justify-between items-center">
-      <div className="flex items-center flex-1">
+    <nav className="bg-surface-raised border-b border-border-default text-text-primary px-6 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-3 flex-1">
         <img
           src="/rental_manager_logo_small.png"
           alt="Rental Manager Logo"
-          className="h-10 w-auto mr-3"
+          className="h-9 w-auto"
         />
-        <Link to="/" className="text-2xl font-bold">Rental Manager</Link>
+        <Link to="/" className="text-xl font-bold tracking-wide text-text-primary hover:text-brand-light transition-colors">
+          Rental Manager
+        </Link>
       </div>
-      <div>
+
+      <div className="flex items-center gap-4">
         {isSignedIn ? (
           <>
-            <Link to="/tasks" className="mr-4">CRUD</Link>
-            <Link to="/profile" className="mr-4">Profile</Link>
-            <button onClick={handleLogout} className="bg-red-500 px-4 py-2 rounded hover:bg-red-700">
+            <Link
+              to="/tasks"
+              className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors"
+            >
+              CRUD
+            </Link>
+            <Link
+              to="/profile"
+              className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors"
+            >
+              Profile
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors
+                         text-status-danger border-status-danger-dim
+                         hover:bg-status-danger-dim/40"
+            >
               Logout
             </button>
           </>
         ) : (
           <>
-            <Link to="/login" className="mr-4">Login</Link>
-            <Link to="/register" className="bg-green-500 px-4 py-2 rounded hover:bg-green-700">Register</Link>
+            <Link
+              to="/login"
+              className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors"
+            >
+              Login
+            </Link>
+            <Link
+              to="/register"
+              className="btn-primary text-sm px-4 py-1.5"
+            >
+              Register
+            </Link>
           </>
         )}
       </div>

@@ -11,7 +11,6 @@ interface TaskFormProps {
 }
 
 const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }: TaskFormProps) => {
-
   const { getToken, isSignedIn } = useAuth();
   const [formData, setFormData] = useState({ title: '', description: '', deadline: '' });
 
@@ -45,37 +44,65 @@ const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }: TaskFormProp
       }
       setEditingTask(null);
       setFormData({ title: '', description: '', deadline: '' });
-    } catch (error) {
+    } catch {
       alert('Failed to save task.');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded mb-6">
-      <h1 className="text-2xl font-bold mb-4">{editingTask ? 'Your Form Name: Edit Operation' : 'Your Form Name: Create Operation'}</h1>
-      <input
-        type="text"
-        placeholder="Title"
-        value={formData.title}
-        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-        className="w-full mb-4 p-2 border rounded"
-      />
-      <input
-        type="text"
-        placeholder="Description"
-        value={formData.description}
-        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-        className="w-full mb-4 p-2 border rounded"
-      />
-      <input
-        type="date"
-        value={formData.deadline}
-        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-        className="w-full mb-4 p-2 border rounded"
-      />
-      <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
-        {editingTask ? 'Update Button' : 'Create Button'}
-      </button>
+    <form onSubmit={handleSubmit} className="card p-6 mb-6">
+      <h1 className="text-xl font-bold mb-5 text-text-primary">
+        {editingTask ? 'Your Form Name: Edit Operation' : 'Your Form Name: Create Operation'}
+      </h1>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-text-label mb-1">Title</label>
+          <input
+            type="text"
+            placeholder="Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            className="input-base"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-label mb-1">Description</label>
+          <input
+            type="text"
+            placeholder="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="input-base"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-label mb-1">Deadline</label>
+          <input
+            type="date"
+            value={formData.deadline}
+            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+            className="input-base"
+          />
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <button type="submit" className="btn-primary flex-1">
+            {editingTask ? 'Update Button' : 'Create Button'}
+          </button>
+          {editingTask && (
+            <button
+              type="button"
+              onClick={() => setEditingTask(null)}
+              className="btn-ghost flex-1"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
     </form>
   );
 };
