@@ -31,6 +31,15 @@ export interface AppUser {
   role: 'admin' | 'customer';
 }
 
+/** Props passed to the customer dashboard and its tab components. */
+export interface CustomerTabProps {
+  assets:              Asset[];
+  assetTypes:          AssetType[];
+  productGroups:       ProductGroup[];
+  requestRental:       (items: { typeId: string; quantity: number }[], returnDate: string) => Promise<void>;
+  updateAssetStatuses: (ids: string[], status: AssetStatus, clearData?: boolean) => Promise<void>;
+}
+
 /** Shared props passed to every admin tab component. */
 export interface AdminTabProps {
   users: AppUser[];

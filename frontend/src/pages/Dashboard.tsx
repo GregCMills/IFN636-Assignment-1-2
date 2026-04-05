@@ -4,7 +4,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import CustomerDashboard from '../components/customer/CustomerDashboard';
 import axiosInstance from '../axiosConfig';
-import type { Asset, AssetStatus, AssetType, ProductGroup, AdminTabProps } from '../types/assets';
+import type { Asset, AssetStatus, AssetType, ProductGroup, AdminTabProps, CustomerTabProps } from '../types/assets';
 
 const Dashboard = () => {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -106,6 +106,20 @@ const Dashboard = () => {
     setAssets(prev => prev.filter(a => a.id !== id));
   };
 
+  const requestRental = async (
+    items: { typeId: string; quantity: number }[],
+    returnDate: string,
+  ) => {
+    const headers = await authHeaders();
+    const { data } = await axiosInstance.post(
+      '/api/assets/request-rental',
+      { items, returnDate },
+      { headers },
+    );
+    const updatedMap = new Map<string, Asset>((data as Asset[]).map(a => [a.id, a]));
+    setAssets(prev => prev.map(a => updatedMap.get(a.id) ?? a));
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (!isLoaded || (isSignedIn && loading)) {
@@ -128,7 +142,7 @@ const Dashboard = () => {
 
   const isAdmin = (user?.publicMetadata?.role as string) === 'admin';
 
-  const tabProps: AdminTabProps = {
+  const adminProps: AdminTabProps = {
     users: [],
     assets,
     assetTypes,
@@ -143,11 +157,19 @@ const Dashboard = () => {
     deleteAsset,
   };
 
+  const customerProps: CustomerTabProps = {
+    assets,
+    assetTypes,
+    productGroups,
+    requestRental,
+    updateAssetStatuses,
+  };
+
   return (
     <div className="container mx-auto p-6">
       {isAdmin
-        ? <AdminDashboard {...tabProps} />
-        : <CustomerDashboard />
+        ? <AdminDashboard {...adminProps} />
+        : <CustomerDashboard {...customerProps} />
       }
     </div>
   );
