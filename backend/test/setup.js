@@ -22,7 +22,8 @@ require.cache[require.resolve('@clerk/express')] = {
     },
     clerkClient: {
       users: {
-        getUser: async () => ({ publicMetadata: { role: _mockRole } }),
+        getUser:     async () => ({ publicMetadata: { role: _mockRole } }),
+        getUserList: async () => ({ data: [] }),
       },
     },
   },

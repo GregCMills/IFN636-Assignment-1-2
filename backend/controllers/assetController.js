@@ -1,9 +1,50 @@
 const Asset = require('../models/Asset');
 
+/** Clerk v2 exposes req.auth as a function; v1 / test stubs expose it as a plain object. */
+const getAuthUserId = (req) =>
+  typeof req.auth === 'function' ? req.auth()?.userId : req.auth?.userId;
+
+/**
+ * Enriches an array of Mongoose Asset documents with Clerk user name / email.
+ * Returns plain objects ready to serialise.
+ */
+const enrichWithClerkUsers = async (assets) => {
+  const uniqueUserIds = [...new Set(assets.map(a => {
+    const plain = typeof a.toJSON === 'function' ? a.toJSON() : a;
+    return plain.rentedByUserId;
+  }).filter(Boolean))];
+
+  let userMap = {};
+  if (uniqueUserIds.length > 0) {
+    const { clerkClient } = require('@clerk/express');
+    try {
+      const { data: clerkUsers } = await clerkClient.users.getUserList({ userId: uniqueUserIds });
+      clerkUsers.forEach(u => {
+        userMap[u.id] = {
+          email: u.emailAddresses[0]?.emailAddress ?? '',
+          name:  [u.firstName, u.lastName].filter(Boolean).join(' ') || null,
+        };
+      });
+    } catch {
+      // Clerk unavailable — return assets without enrichment rather than failing
+    }
+  }
+
+  return assets.map(a => {
+    const plain = typeof a.toJSON === 'function' ? a.toJSON() : { ...a };
+    const info  = plain.rentedByUserId ? userMap[plain.rentedByUserId] : null;
+    if (info) {
+      plain.rentedByUserEmail = info.email;
+      if (info.name) plain.rentedByUserName = info.name;
+    }
+    return plain;
+  });
+};
+
 const listAssets = async (req, res) => {
   try {
     const assets = await Asset.find().sort({ name: 1 });
-    res.json(assets);
+    res.json(await enrichWithClerkUsers(assets));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -41,7 +82,7 @@ const bulkUpdateStatus = async (req, res) => {
     if (!ids?.length || !status) return res.status(400).json({ message: 'ids and status are required' });
 
     const { clerkClient } = require('@clerk/express');
-    const clerkUser = await clerkClient.users.getUser(req.auth.userId);
+    const clerkUser = await clerkClient.users.getUser(getAuthUserId(req));
     const isAdmin   = clerkUser.publicMetadata?.role === 'admin';
 
     if (!isAdmin) {
@@ -49,7 +90,7 @@ const bulkUpdateStatus = async (req, res) => {
       if (!allowed.includes(status)) {
         return res.status(403).json({ message: 'Not authorised for this status transition' });
       }
-      const owned = await Asset.find({ _id: { $in: ids }, rentedByUserId: req.auth.userId });
+      const owned = await Asset.find({ _id: { $in: ids }, rentedByUserId: getAuthUserId(req) });
       if (owned.length !== ids.length) {
         return res.status(403).json({ message: 'You can only update your own assets' });
       }
@@ -61,7 +102,7 @@ const bulkUpdateStatus = async (req, res) => {
 
     await Asset.updateMany({ _id: { $in: ids } }, update);
     const updated = await Asset.find({ _id: { $in: ids } });
-    res.json(updated);
+    res.json(await enrichWithClerkUsers(updated));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -86,7 +127,7 @@ const requestRental = async (req, res) => {
       }
       for (const asset of available) {
         asset.status         = 'Pending Rental';
-        asset.rentedByUserId = req.auth.userId;
+        asset.rentedByUserId = getAuthUserId(req);
         asset.returnDate     = returnDate;
         await asset.save();
         updatedAssets.push(asset);

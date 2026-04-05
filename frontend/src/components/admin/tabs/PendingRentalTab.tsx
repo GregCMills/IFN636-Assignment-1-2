@@ -12,7 +12,6 @@ interface PendingDeny {
 const PendingRentalTab = ({
   assets,
   assetTypes,
-  users,
   updateAssetStatuses,
 }: AdminTabProps) => {
   const [submitting, setSubmitting]   = useState(false);
@@ -21,8 +20,12 @@ const PendingRentalTab = ({
 
   const pending = assets.filter(a => a.status === 'Pending Rental');
 
-  const getUserEmail = (id?: string) =>
-    users.find(u => u.id === id)?.email ?? 'Unknown User';
+  /** Display name for a renter — prefer full name, fall back to email, then Clerk ID. */
+  const getUserLabel = (userAssets: typeof pending) =>
+    userAssets[0]?.rentedByUserName ||
+    userAssets[0]?.rentedByUserEmail ||
+    userAssets[0]?.rentedByUserId ||
+    'Unknown User';
 
   const getTypeName = (id: string) =>
     assetTypes.find(t => t.id === id)?.name ?? 'Unknown Product';
@@ -79,7 +82,7 @@ const PendingRentalTab = ({
         {Object.entries(groupedByUser).map(([userId, userAssets]) => {
           const groupedByType = groupBy(userAssets, a => a.typeId);
           const allUserIds    = userAssets.map(a => a.id);
-          const userEmail     = getUserEmail(userId);
+          const userLabel     = getUserLabel(userAssets);
 
           return (
             <div key={userId} className="card overflow-hidden">
@@ -87,7 +90,7 @@ const PendingRentalTab = ({
               <div className="bg-surface-elevated/30 px-6 py-4 border-b border-border-default flex flex-wrap justify-between items-center gap-3">
                 <h3 className="font-bold text-text-primary text-lg flex items-center gap-2">
                   <Users size={18} className="text-brand-light" />
-                  {userEmail}
+                  {userLabel}
                 </h3>
                 <div className="flex gap-2">
                   <button
@@ -103,7 +106,7 @@ const PendingRentalTab = ({
                     onClick={() =>
                       setPendingDeny({
                         ids:   allUserIds,
-                        label: `all ${allUserIds.length} rental${allUserIds.length !== 1 ? 's' : ''} for ${userEmail}`,
+                        label: `all ${allUserIds.length} rental${allUserIds.length !== 1 ? 's' : ''} for ${userLabel}`,
                       })
                     }
                     disabled={submitting}
@@ -141,7 +144,7 @@ const PendingRentalTab = ({
                               onClick={() =>
                                 setPendingDeny({
                                   ids:   allTypeIds,
-                                  label: `${allTypeIds.length} ${typeName} unit${allTypeIds.length !== 1 ? 's' : ''} for ${userEmail}`,
+                                  label: `${allTypeIds.length} ${typeName} unit${allTypeIds.length !== 1 ? 's' : ''} for ${userLabel}`,
                                 })
                               }
                               disabled={submitting}

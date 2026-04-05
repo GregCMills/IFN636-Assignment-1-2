@@ -23,6 +23,8 @@ export interface Asset {
   status: AssetStatus;
   rentedByUserId?: string;
   returnDate?: string;
+  rentedByUserEmail?: string;
+  rentedByUserName?: string;
 }
 
 export interface AppUser {

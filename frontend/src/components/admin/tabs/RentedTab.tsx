@@ -5,12 +5,15 @@ import { groupBy, formatAusDate } from '../../../utils/helpers';
 const RentedTab = ({
   assets,
   assetTypes,
-  users,
 }: AdminTabProps) => {
   const rented = assets.filter(a => a.status === 'Rented');
 
-  const getUserEmail = (id?: string) =>
-    users.find(u => u.id === id)?.email ?? 'Unknown User';
+  /** Display name for a renter — prefer full name, fall back to email, then Clerk ID. */
+  const getUserLabel = (userAssets: typeof rented) =>
+    userAssets[0]?.rentedByUserName ||
+    userAssets[0]?.rentedByUserEmail ||
+    userAssets[0]?.rentedByUserId ||
+    'Unknown User';
 
   const getTypeName = (id: string) =>
     assetTypes.find(t => t.id === id)?.name ?? 'Unknown Product';
@@ -30,14 +33,14 @@ const RentedTab = ({
     <div className="space-y-6">
       {Object.entries(groupedByUser).map(([userId, userAssets]) => {
         const groupedByType = groupBy(userAssets, a => a.typeId);
-        const userEmail     = getUserEmail(userId);
+        const userLabel     = getUserLabel(userAssets);
 
         return (
           <div key={userId} className="card overflow-hidden">
             <div className="bg-surface-elevated/30 px-6 py-4 border-b border-border-default flex flex-wrap items-center gap-3">
               <h3 className="font-bold text-text-primary text-lg flex items-center gap-2">
                 <Users size={18} className="text-brand-light" />
-                {userEmail}
+                {userLabel}
               </h3>
               <span className="ml-auto badge-rented">
                 {userAssets.length} unit{userAssets.length !== 1 ? 's' : ''}
