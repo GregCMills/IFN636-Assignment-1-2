@@ -4,6 +4,7 @@ import type { AdminTabProps } from '../../../types/assets';
 import type { AssetStatus } from '../../../types/assets';
 import EmptyState from '../../ui/EmptyState';
 
+/** All valid status values — drives both the filter dropdown and the count query. */
 const ALL_STATUSES: AssetStatus[] = [
   'Available',
   'Rented',
@@ -12,9 +13,19 @@ const ALL_STATUSES: AssetStatus[] = [
   'Maintenance',
 ];
 
+/**
+ * Provides a high-level inventory overview grouped by ProductGroup and AssetType.
+ * A status filter lets admins quickly scan how many units of each product model
+ * are in a given state (e.g. how many MacBook Air M2s are currently Available).
+ */
 const OverviewTab = ({ assets, assetTypes, productGroups }: AdminTabProps) => {
   const [statusFilter, setStatusFilter] = useState<AssetStatus>('Available');
 
+  /**
+   * Counts how many assets of a given type currently match the selected status filter.
+   *
+   * @param typeId - The AssetType ID to count for.
+   */
   const countForType = (typeId: string) =>
     assets.filter(a => a.typeId === typeId && a.status === statusFilter).length;
 

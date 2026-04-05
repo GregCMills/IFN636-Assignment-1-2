@@ -7,6 +7,12 @@ import InlineErrorBanner from '../../ui/InlineErrorBanner';
 import GroupedCard from '../../ui/GroupedCard';
 import AssetRow from '../../ui/AssetRow';
 
+/**
+ * Shows all assets currently rented by the authenticated customer, grouped by
+ * return date and then by asset type. Customers can submit a return request for
+ * individual assets, which transitions the asset to 'Pending Return' for admin
+ * verification.
+ */
 const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }: CustomerTabProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [apiError,   setApiError]   = useState('');
@@ -18,6 +24,11 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }
   const getTypeName = (id: string) =>
     assetTypes.find(t => t.id === id)?.name ?? 'Unknown Product';
 
+  /**
+   * Moves the given assets to 'Pending Return' status, triggering an admin review.
+   *
+   * @param ids - Asset IDs to submit for return.
+   */
   const handleSubmitReturn = async (ids: string[]) => {
     setSubmitting(true);
     setApiError('');
@@ -44,6 +55,7 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }
     );
   }
 
+  // Group rentals by return date so the customer can see which items are due back first.
   const groupedByDate = groupBy(myRentals, a => a.returnDate ?? 'No Return Date');
 
   return (

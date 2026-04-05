@@ -7,6 +7,15 @@ import InlineErrorBanner from '../../ui/InlineErrorBanner';
 import GroupedCard from '../../ui/GroupedCard';
 import AssetRow from '../../ui/AssetRow';
 
+/**
+ * Displays all assets currently in Maintenance status, grouped first by
+ * ProductGroup (e.g. "Laptops") and then by AssetType (e.g. "MacBook Air M2").
+ * Admins can mark individual assets or entire type/group batches as Available.
+ *
+ * The two-level grouping (group → type → assets) gives context at a glance and
+ * lets admins resolve a whole product model in one click when multiple units
+ * finish servicing at the same time.
+ */
 const MaintenanceTab = ({
   assets,
   assetTypes,
@@ -24,6 +33,10 @@ const MaintenanceTab = ({
   const getGroupName = (id: string) =>
     productGroups.find(g => g.id === id)?.name ?? 'Unknown Type';
 
+  /**
+   * Wraps any async action with shared loading/error state so individual
+   * button handlers stay concise and don't duplicate try/catch boilerplate.
+   */
   const withAction = async (fn: () => Promise<void>) => {
     setSubmitting(true);
     setApiError('');
@@ -53,6 +66,8 @@ const MaintenanceTab = ({
     );
   }
 
+  // First level of grouping: cluster assets by their parent ProductGroup so
+  // each card represents a physical category (e.g. all laptops in maintenance).
   const groupedByProductType = groupBy(
     maintenance,
     a => assetTypes.find(t => t.id === a.typeId)?.groupId ?? 'unknown',
@@ -94,6 +109,7 @@ const MaintenanceTab = ({
                 </div>
               </>}
             >
+              {/* Second level: sub-group by AssetType within the ProductGroup card */}
               {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
                   const typeName   = getTypeName(typeId);
                   const allTypeIds = typeAssets.map(a => a.id);

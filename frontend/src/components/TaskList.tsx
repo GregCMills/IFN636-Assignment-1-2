@@ -2,12 +2,21 @@ import { useAuth } from '@clerk/clerk-react';
 import axiosInstance from '../axiosConfig';
 import { Task } from '../types';
 
+/** Props passed down from the Tasks page to keep task state in a single parent. */
 interface TaskListProps {
+  /** Tasks to display. */
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  /** Callback to load a task into the edit form. */
   setEditingTask: React.Dispatch<React.SetStateAction<Task | null>>;
 }
 
+/**
+ * Renders the list of tasks belonging to the authenticated user.
+ * Each item provides Edit (loads task into TaskForm) and Delete (calls API and
+ * updates state optimistically) actions.
+ * Displays an empty-state message when there are no tasks.
+ */
 const TaskList = ({ tasks, setTasks, setEditingTask }: TaskListProps) => {
   const { getToken, isSignedIn } = useAuth();
 

@@ -3,17 +3,28 @@ import { useAuth } from '@clerk/clerk-react';
 import axiosInstance from '../axiosConfig';
 import { Task } from '../types';
 
+/** Props passed down from the Tasks page to keep task state in a single parent. */
 interface TaskFormProps {
+  /** Full list of tasks currently in state — used to apply optimistic updates. */
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  /** When non-null, the form pre-fills with this task's data and switches to edit mode. */
   editingTask: Task | null;
   setEditingTask: React.Dispatch<React.SetStateAction<Task | null>>;
 }
 
+/**
+ * Controlled form component for creating and editing tasks.
+ * Switches between "create" and "edit" mode based on whether `editingTask` is set.
+ * On successful submission the parent task list is updated optimistically without
+ * a full re-fetch.
+ */
 const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }: TaskFormProps) => {
   const { getToken, isSignedIn } = useAuth();
   const [formData, setFormData] = useState({ title: '', description: '', deadline: '' });
 
+  // Populate form fields when an existing task is selected for editing,
+  // or reset to empty when edit mode is cleared.
   useEffect(() => {
     if (editingTask) {
       setFormData({
