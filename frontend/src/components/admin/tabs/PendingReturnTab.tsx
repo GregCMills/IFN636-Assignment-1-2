@@ -3,6 +3,7 @@ import { Users, Calendar, Check, X, Wrench, ArrowRightLeft } from 'lucide-react'
 import type { AdminTabProps } from '../../../types/assets';
 import ConfirmModal from '../../ConfirmModal';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
+import EmptyState from '../../ui/EmptyState';
 
 interface PendingAction {
   ids: string[];
@@ -63,11 +64,12 @@ const PendingReturnTab = ({
 
   if (pending.length === 0) {
     return (
-      <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-        <ArrowRightLeft size={40} className="text-status-success opacity-40" />
-        <p className="text-text-muted text-lg font-medium">No Pending Return Requests</p>
-        <p className="text-text-subtle text-sm">All return requests have been processed.</p>
-      </div>
+      <EmptyState
+        icon={ArrowRightLeft}
+        iconClassName="text-status-success opacity-40"
+        title="No Pending Return Requests"
+        description="All return requests have been processed."
+      />
     );
   }
 

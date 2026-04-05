@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Wrench, Check } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import { groupBy } from '../../../utils/helpers';
+import EmptyState from '../../ui/EmptyState';
 
 const MaintenanceTab = ({
   assets,
@@ -40,11 +41,12 @@ const MaintenanceTab = ({
 
   if (maintenance.length === 0) {
     return (
-      <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-        <Wrench size={40} className="text-status-warning opacity-40" />
-        <p className="text-text-muted text-lg font-medium">No Assets in Maintenance</p>
-        <p className="text-text-subtle text-sm">All assets are available or in use.</p>
-      </div>
+      <EmptyState
+        icon={Wrench}
+        iconClassName="text-status-warning opacity-40"
+        title="No Assets in Maintenance"
+        description="All assets are available or in use."
+      />
     );
   }
 

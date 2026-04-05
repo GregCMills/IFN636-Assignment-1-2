@@ -3,6 +3,7 @@ import { Users, Calendar, Check, X } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import ConfirmModal from '../../ConfirmModal';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
+import EmptyState from '../../ui/EmptyState';
 
 interface PendingDeny {
   ids: string[];
@@ -60,11 +61,12 @@ const PendingRentalTab = ({
 
   if (pending.length === 0) {
     return (
-      <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-        <Check size={40} className="text-status-success opacity-40" />
-        <p className="text-text-muted text-lg font-medium">No Pending Rental Requests</p>
-        <p className="text-text-subtle text-sm">All rental requests have been processed.</p>
-      </div>
+      <EmptyState
+        icon={Check}
+        iconClassName="text-status-success opacity-40"
+        title="No Pending Rental Requests"
+        description="All rental requests have been processed."
+      />
     );
   }
 

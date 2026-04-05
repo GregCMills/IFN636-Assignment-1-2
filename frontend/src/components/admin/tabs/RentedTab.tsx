@@ -1,6 +1,7 @@
 import { Users, Calendar } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
+import EmptyState from '../../ui/EmptyState';
 
 const RentedTab = ({
   assets,
@@ -20,10 +21,10 @@ const RentedTab = ({
 
   if (rented.length === 0) {
     return (
-      <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-        <p className="text-text-muted text-lg font-medium">No Assets Currently Rented</p>
-        <p className="text-text-subtle text-sm">There are no active rentals at this time.</p>
-      </div>
+      <EmptyState
+        title="No Assets Currently Rented"
+        description="There are no active rentals at this time."
+      />
     );
   }
 

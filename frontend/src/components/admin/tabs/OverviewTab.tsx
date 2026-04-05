@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Package, SlidersHorizontal } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import type { AssetStatus } from '../../../types/assets';
+import EmptyState from '../../ui/EmptyState';
 
 const ALL_STATUSES: AssetStatus[] = [
   'Available',
@@ -66,11 +67,12 @@ const OverviewTab = ({ assets, assetTypes, productGroups }: AdminTabProps) => {
       })}
 
       {productGroups.every(g => assetTypes.filter(t => t.groupId === g.id).length === 0) && (
-        <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-          <Package size={40} className="text-text-subtle opacity-30" />
-          <p className="text-text-muted text-lg font-medium">No Products Found</p>
-          <p className="text-text-subtle text-sm">Add product groups and products in Asset Management.</p>
-        </div>
+        <EmptyState
+          icon={Package}
+          iconClassName="text-text-subtle opacity-30"
+          title="No Products Found"
+          description="Add product groups and products in Asset Management."
+        />
       )}
     </div>
   );
