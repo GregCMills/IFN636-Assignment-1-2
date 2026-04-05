@@ -149,4 +149,5 @@ jobs:
             pm2 save
             pm2 startup | tail -1 | sudo bash || true
 
-            sudo systemctl reload nginx
+            sudo cp /var/www/app/nginx.conf /etc/nginx/sites-available/default
+            sudo nginx -t && sudo systemctl reload nginx
