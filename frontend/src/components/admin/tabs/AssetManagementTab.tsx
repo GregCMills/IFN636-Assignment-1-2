@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import ConfirmModal from '../../ConfirmModal';
+import InlineErrorBanner from '../../ui/InlineErrorBanner';
 
 interface PendingDelete {
   action: () => Promise<void>;
@@ -188,11 +189,7 @@ const AssetManagementTab = ({
   return (
     <div className="flex flex-col gap-6">
 
-      {apiError && (
-        <div className="bg-status-danger-dim/40 border border-status-danger/30 text-status-danger px-4 py-3 rounded-lg text-sm">
-          {apiError}
-        </div>
-      )}
+      <InlineErrorBanner message={apiError} />
 
       {/* ── Step 1: Product Group ──────────────────────────────────── */}
       <section className="card p-6">

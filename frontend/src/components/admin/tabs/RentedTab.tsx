@@ -1,6 +1,9 @@
 import { Users, Calendar } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
+import EmptyState from '../../ui/EmptyState';
+import GroupedCard from '../../ui/GroupedCard';
+import AssetRow from '../../ui/AssetRow';
 
 const RentedTab = ({
   assets,
@@ -20,10 +23,10 @@ const RentedTab = ({
 
   if (rented.length === 0) {
     return (
-      <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-        <p className="text-text-muted text-lg font-medium">No Assets Currently Rented</p>
-        <p className="text-text-subtle text-sm">There are no active rentals at this time.</p>
-      </div>
+      <EmptyState
+        title="No Assets Currently Rented"
+        description="There are no active rentals at this time."
+      />
     );
   }
 
@@ -36,8 +39,10 @@ const RentedTab = ({
         const userLabel     = getUserLabel(userAssets);
 
         return (
-          <div key={userId} className="card overflow-hidden">
-            <div className="bg-surface-elevated/30 px-6 py-4 border-b border-border-default flex flex-wrap items-center gap-3">
+          <GroupedCard
+            key={userId}
+            headerClassName="flex flex-wrap items-center gap-3"
+            header={<>
               <h3 className="font-bold text-text-primary text-lg flex items-center gap-2">
                 <Users size={18} className="text-brand-light" />
                 {userLabel}
@@ -45,10 +50,9 @@ const RentedTab = ({
               <span className="ml-auto badge-rented">
                 {userAssets.length} unit{userAssets.length !== 1 ? 's' : ''}
               </span>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
+            </>}
+          >
+            {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
                 const typeName = getTypeName(typeId);
 
                 return (
@@ -56,11 +60,7 @@ const RentedTab = ({
                     <h4 className="font-bold text-text-secondary mb-3">{typeName}</h4>
                     <div className="space-y-2">
                       {typeAssets.map(asset => (
-                        <div
-                          key={asset.id}
-                          className="flex flex-wrap sm:flex-nowrap sm:items-center justify-between gap-3
-                                     bg-surface-elevated/20 border border-border-default p-3 rounded-lg"
-                        >
+                        <AssetRow key={asset.id}>
                           <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
                           {asset.returnDate && (
                             <span className="flex items-center gap-1 text-xs text-brand-subtle bg-brand-dim/40 border border-brand/20 px-2 py-0.5 rounded-full">
@@ -68,14 +68,13 @@ const RentedTab = ({
                               Return by: {formatAusDate(asset.returnDate)}
                             </span>
                           )}
-                        </div>
+                        </AssetRow>
                       ))}
                     </div>
                   </div>
                 );
               })}
-            </div>
-          </div>
+          </GroupedCard>
         );
       })}
     </div>

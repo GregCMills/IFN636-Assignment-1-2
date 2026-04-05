@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Wrench, Check } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import { groupBy } from '../../../utils/helpers';
+import EmptyState from '../../ui/EmptyState';
+import InlineErrorBanner from '../../ui/InlineErrorBanner';
+import GroupedCard from '../../ui/GroupedCard';
+import AssetRow from '../../ui/AssetRow';
 
 const MaintenanceTab = ({
   assets,
@@ -40,11 +44,12 @@ const MaintenanceTab = ({
 
   if (maintenance.length === 0) {
     return (
-      <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
-        <Wrench size={40} className="text-status-warning opacity-40" />
-        <p className="text-text-muted text-lg font-medium">No Assets in Maintenance</p>
-        <p className="text-text-subtle text-sm">All assets are available or in use.</p>
-      </div>
+      <EmptyState
+        icon={Wrench}
+        iconClassName="text-status-warning opacity-40"
+        title="No Assets in Maintenance"
+        description="All assets are available or in use."
+      />
     );
   }
 
@@ -55,11 +60,7 @@ const MaintenanceTab = ({
 
   return (
     <>
-      {apiError && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-status-danger-dim/40 border border-status-danger/30 text-status-danger text-sm">
-          {apiError}
-        </div>
-      )}
+      <InlineErrorBanner message={apiError} className="mb-4" />
 
       <div className="space-y-6">
         {Object.entries(groupedByProductType).map(([groupId, groupAssets]) => {
@@ -68,8 +69,9 @@ const MaintenanceTab = ({
           const groupedByType = groupBy(groupAssets, a => a.typeId);
 
           return (
-            <div key={groupId} className="card overflow-hidden">
-              <div className="bg-surface-elevated/30 px-6 py-4 border-b border-border-default flex flex-wrap justify-between items-center gap-3">
+            <GroupedCard
+              key={groupId}
+              header={<>
                 <h3 className="font-bold text-text-primary text-lg flex items-center gap-2">
                   <Wrench size={18} className="text-status-warning" />
                   {groupName}
@@ -90,10 +92,9 @@ const MaintenanceTab = ({
                     </button>
                   )}
                 </div>
-              </div>
-
-              <div className="p-6 space-y-6">
-                {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
+              </>}
+            >
+              {Object.entries(groupedByType).map(([typeId, typeAssets]) => {
                   const typeName   = getTypeName(typeId);
                   const allTypeIds = typeAssets.map(a => a.id);
 
@@ -120,11 +121,7 @@ const MaintenanceTab = ({
                       </div>
                       <div className="space-y-2">
                         {typeAssets.map(asset => (
-                          <div
-                            key={asset.id}
-                            className="flex flex-wrap sm:flex-nowrap sm:items-center justify-between gap-3
-                                       bg-surface-elevated/20 border border-border-default p-3 rounded-lg"
-                          >
+                          <AssetRow key={asset.id}>
                             <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
                             <button
                               onClick={() => handleMarkAvailable([asset.id])}
@@ -135,14 +132,13 @@ const MaintenanceTab = ({
                             >
                               <Check size={12} /> Mark Available
                             </button>
-                          </div>
+                          </AssetRow>
                         ))}
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            </div>
+            </GroupedCard>
           );
         })}
       </div>
