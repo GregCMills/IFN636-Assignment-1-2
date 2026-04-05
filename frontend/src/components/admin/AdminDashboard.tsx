@@ -5,6 +5,7 @@ import {
 import type { AdminTabProps } from '../../types/assets';
 import AssetManagementTab from './tabs/AssetManagementTab';
 import PendingRentalTab   from './tabs/PendingRentalTab';
+import PendingReturnTab   from './tabs/PendingReturnTab';
 import RentedTab          from './tabs/RentedTab';
 
 // ── Tab registry ──────────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ const TABS: TabConfig[] = [
   { id: 'maintenance',     label: 'Maintenance',      icon: <Wrench size={16} />,         component: makeStub('Assets in Maintenance') },
   { id: 'pendingRental',   label: 'Pending Rental',   icon: <Clock size={16} />,          component: PendingRentalTab },
   { id: 'rented',          label: 'Rented',           icon: <CheckCircle size={16} />,    component: RentedTab },
-  { id: 'pendingReturn',   label: 'Pending Return',   icon: <ArrowRightLeft size={16} />, component: makeStub('Pending Return Approvals') },
+  { id: 'pendingReturn',   label: 'Pending Return',   icon: <ArrowRightLeft size={16} />, component: PendingReturnTab },
   { id: 'assetManagement', label: 'Asset Management', icon: <Layers size={16} />,         component: AssetManagementTab },
 ];
 

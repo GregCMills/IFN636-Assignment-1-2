@@ -449,4 +449,110 @@ describe('Asset Management API', () => {
     });
   });
 
+  // ── Pending Return workflow ──────────────────────────────────────────────────
+
+  describe('Pending Return workflow', () => {
+    const mkPendingReturn = async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id);
+      return Asset.create({
+        typeId: type.id, name: 'Unit 001',
+        status: 'Pending Return',
+        rentedByUserId: 'test_user_id',
+        returnDate: '2026-04-20',
+      });
+    };
+
+    it('admin can approve a return — asset transitions to Available and rental data is cleared', async () => {
+      const asset = await mkPendingReturn();
+
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Available', clearRentalData: true });
+
+      expect(res.status).to.equal(200);
+      const updated = await Asset.findById(asset.id);
+      expect(updated.status).to.equal('Available');
+      expect(updated.rentedByUserId).to.be.undefined;
+      expect(updated.returnDate).to.be.undefined;
+    });
+
+    it('admin can send a returned asset to Maintenance — rental data is cleared', async () => {
+      const asset = await mkPendingReturn();
+
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Maintenance', clearRentalData: true });
+
+      expect(res.status).to.equal(200);
+      const updated = await Asset.findById(asset.id);
+      expect(updated.status).to.equal('Maintenance');
+      expect(updated.rentedByUserId).to.be.undefined;
+      expect(updated.returnDate).to.be.undefined;
+    });
+
+    it('admin can deny a return — asset goes back to Rented and rental data is preserved', async () => {
+      const asset = await mkPendingReturn();
+
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Rented', clearRentalData: false });
+
+      expect(res.status).to.equal(200);
+      const updated = await Asset.findById(asset.id);
+      expect(updated.status).to.equal('Rented');
+      expect(updated.rentedByUserId).to.equal('test_user_id');
+      expect(updated.returnDate).to.equal('2026-04-20');
+    });
+
+    it('admin can approve multiple Pending Return assets in a single request', async () => {
+      const group  = await mkGroup();
+      const type   = await mkType(group.id);
+      const assetA = await Asset.create({ typeId: type.id, name: 'Unit 001', status: 'Pending Return', rentedByUserId: 'test_user_id', returnDate: '2026-04-20' });
+      const assetB = await Asset.create({ typeId: type.id, name: 'Unit 002', status: 'Pending Return', rentedByUserId: 'test_user_id', returnDate: '2026-04-20' });
+
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [assetA.id, assetB.id], status: 'Available', clearRentalData: true });
+
+      expect(res.status).to.equal(200);
+      const updated = await Asset.find({ _id: { $in: [assetA.id, assetB.id] } });
+      expect(updated.every(a => a.status === 'Available')).to.be.true;
+      expect(updated.every(a => !a.rentedByUserId)).to.be.true;
+    });
+
+    it('customer can cancel their own Pending Return (back to Rented)', async () => {
+      clerkMock.setRole('customer');
+      const group = await mkGroup();
+      const type  = await mkType(group.id);
+      const asset = await Asset.create({
+        typeId: type.id, name: 'Unit 001',
+        status: 'Pending Return', rentedByUserId: 'test_user_id',
+      });
+
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Rented' });
+
+      expect(res.status).to.equal(200);
+      const updated = await Asset.findById(asset.id);
+      expect(updated.status).to.equal('Rented');
+    });
+
+    it('customer cannot approve or deny a Pending Return (admin-only transition to Available)', async () => {
+      clerkMock.setRole('customer');
+      const asset = await mkPendingReturn();
+
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Available' });
+
+      expect(res.status).to.equal(403);
+    });
+
+    it('customer cannot send a Pending Return to Maintenance', async () => {
+      clerkMock.setRole('customer');
+      const asset = await mkPendingReturn();
+
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Maintenance' });
+
+      expect(res.status).to.equal(403);
+    });
+  });
+
 });
