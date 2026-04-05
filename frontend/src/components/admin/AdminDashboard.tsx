@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import type { AdminTabProps } from '../../types/assets';
 import AssetManagementTab from './tabs/AssetManagementTab';
+import MaintenanceTab     from './tabs/MaintenanceTab';
 import PendingRentalTab   from './tabs/PendingRentalTab';
 import PendingReturnTab   from './tabs/PendingReturnTab';
 import RentedTab          from './tabs/RentedTab';
@@ -31,7 +32,7 @@ const makeStub = (label: string): React.ComponentType<AdminTabProps> =>
 
 const TABS: TabConfig[] = [
   { id: 'available',       label: 'Available',        icon: <Package size={16} />,        component: makeStub('Available Assets') },
-  { id: 'maintenance',     label: 'Maintenance',      icon: <Wrench size={16} />,         component: makeStub('Assets in Maintenance') },
+  { id: 'maintenance',     label: 'Maintenance',      icon: <Wrench size={16} />,         component: MaintenanceTab },
   { id: 'pendingRental',   label: 'Pending Rental',   icon: <Clock size={16} />,          component: PendingRentalTab },
   { id: 'rented',          label: 'Rented',           icon: <CheckCircle size={16} />,    component: RentedTab },
   { id: 'pendingReturn',   label: 'Pending Return',   icon: <ArrowRightLeft size={16} />, component: PendingReturnTab },
