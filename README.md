@@ -1,7 +1,7 @@
 # Links
 
 **EC2 Public URL:** [http://54.206.192.58](http://54.206.192.58)
-*note, as of 06/04/2026 the EC2 instance was already automatically shut down. I restarted it to: http://[54.206.192.58](http://13.236.121.248)
+*note, as of 06/04/2026 the EC2 instance was already automatically shut down. I restarted it to: [http://13.239.114.254](http://13.239.114.254)
 
 **Alternate Public URL:** [http://gregmills.xyz](http://gregmills.xyz)
 
