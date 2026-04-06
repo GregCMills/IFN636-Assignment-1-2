@@ -53,7 +53,7 @@ jobs:
   # If the tests pass, and this is being pushed to main, deploy to the EC2
   deploy:
     name: Deploy to EC2
-    needs: test                          # only runs if test job passes
+    needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     steps:
@@ -86,8 +86,10 @@ jobs:
         working-directory: ./backend
         run: |
           pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
+          sudo mkdir -p /var/www/frontend
+          sudo cp -r ../frontend/dist/. /var/www/frontend/
           pm2 delete Frontend 2>/dev/null || true
-          pm2 serve ../frontend/dist 3000 --name="Frontend" --spa
+          pm2 serve /var/www/frontend 3000 --name="Frontend" --spa
           pm2 save
 
       - name: Reload nginx
