@@ -12,6 +12,7 @@ To sign in to the application as a customer, you can use this example account:
 ## Jane Doe - Customer
 
 **Username/email:** [jane@mail.com](mailto:jane@mail.com)
+
 **Password:** password
 
 You can also simply use a google or apple account.
@@ -19,6 +20,7 @@ You can also simply use a google or apple account.
 ## Randy Doe - Admin
 
 **Username/email:** [randy@mail.com](mailto:randy@mail.com)
+
 **Password:** password
 
 ---
