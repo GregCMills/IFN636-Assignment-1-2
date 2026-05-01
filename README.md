@@ -160,13 +160,23 @@ git add .
 git commit -m "Describe your change"
 ```
 
+Make sure to test your changes before pushing using:
+
+```bash
+npm run test
+```
+
 Push your branch to GitHub:
 
 ```bash
 git push -u origin your-branch-name
 ```
 
-After pushing your branch, go to the GitHub website and open a pull request from your branch into `main`.
+After pushing your branch, go to the GitHub website and open a pull request from your branch into `main`. This lets you check what your request will actually do and have a looksee.
+![compare pull request](resources/compare_pull_request.png)
+
+If you're happy, make a 'pull request'. This is requesting that your branch be 'pulled' into the main code. Essentially, because we are a group of three, you are requesting to the other two group members.
+![create pull request](resources/create_pull_request.png)
 
 ## Pull Request Checks
 
@@ -180,17 +190,21 @@ For pull requests, the workflow:
 - runs the frontend typecheck
 - runs the frontend tests
 
-The pull request cannot be merged until the tests pass and at least one person has reviewed and approved the pull request.
-
 ## Merging To `main`
 
-After the pull request has passing tests and at least one approval, merge it into `main` using the GitHub website.
+After the pull request has passing tests, merge it into `main` using the GitHub website.
+
+![test and merge](resources/test_and_merge.png)
+
+![successfully merged](resources/successfully_merged.png)
 
 Merging to `main` triggers the GitHub Actions workflow again. This time, the workflow runs the tests again and then deploys the application if the tests pass.
 
 On a successful merge to `main`, the workflow deploys to:
 
-- the EC2 server
-- the DigitalOcean droplet
+- Greg's EC2 server
+- Greg's DigitalOcean droplet, this is what is at gregmills.xyz
+
+![deploy](resources/deploy.png)
 
 This means every deployment should come from a reviewed pull request with passing tests.
