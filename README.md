@@ -55,3 +55,142 @@ The general flow of the application is thus:
 - The admin may see all assets marked for maintenance:
 ![Maintenance assets](resources/Pasted%20image%2020260405232847.png)
 
+---
+
+# Local Setup Instructions
+
+## Prerequisites
+
+Before starting, install:
+
+- Git
+- Node.js 22 or newer
+- npm, which is included with Node.js
+
+Clone the repository and install all dependencies from the project root:
+
+```bash
+git clone https://github.com/GregCMills/IFN636-Assignment-1-2
+cd IFN636-Assignment-1-2
+npm run install-all
+```
+
+Make sure `npm run install-all` is run from the root folder of the project, not from inside `frontend` or `backend`.
+
+## Environment Variables
+
+This project needs local `.env` files for the frontend and backend. These files store settings such as database connection strings and Clerk authentication keys.
+
+The real `.env` files are ignored by Git, so they are not uploaded to GitHub. Instead, the repository includes `.env_template` files that you can copy.
+
+## Frontend `.env`
+
+In the `frontend` folder, copy `.env_template` and rename the copy to `.env`.
+
+The frontend `.env` file contains:
+
+```env
+VITE_CLERK_PUBLISHABLE_KEY=...
+```
+
+This is Clerk's publishable key. It is safe to include in the repository because it is public and is used by the browser to connect to the correct Clerk project.
+
+## Backend `.env`
+
+In the `backend` folder, copy `.env_template` and rename the copy to `.env`.
+
+The backend `.env` file contains:
+
+```env
+MONGO_URI=...
+TEST_MONGO_URI=...
+CLERK_SECRET_KEY=...
+CLERK_PUBLISHABLE_KEY=...
+PORT=5001
+```
+
+`MONGO_URI` is the MongoDB database used when running the application locally.
+
+`TEST_MONGO_URI` is the MongoDB database used when running tests. This should be a separate database so test data does not pollute the normal development database.
+
+`CLERK_SECRET_KEY` is the private Clerk key used by the backend. This key should not be committed to GitHub. I will share it privately, and you should paste it into your local `backend/.env` file.
+
+`CLERK_PUBLISHABLE_KEY` is the public Clerk key used by the backend to identify the correct Clerk project. You can leave this as it appears in the template.
+
+`PORT` controls which port the backend runs on. Leave this as `5001`.
+
+## Running Tests
+
+To run all tests for both the backend and frontend, run this from the project root:
+
+```bash
+npm run test
+```
+
+The backend tests will use `TEST_MONGO_URI`, so make sure that value is set before running tests.
+
+## Running The App Locally
+
+To start the application locally, run this from the project root:
+
+```bash
+npm run dev
+```
+
+This starts both the backend and frontend.
+
+The frontend will run locally in your browser, and the backend will connect to the MongoDB database set in `MONGO_URI`.
+
+---
+
+# Making Changes And Deploying
+
+The `main` branch is protected, so do not commit directly to `main`.
+
+When you want to make a change, create a new branch first:
+
+```bash
+git switch -c your-branch-name
+```
+
+Make your changes, then commit them:
+
+```bash
+git add .
+git commit -m "Describe your change"
+```
+
+Push your branch to GitHub:
+
+```bash
+git push -u origin your-branch-name
+```
+
+After pushing your branch, go to the GitHub website and open a pull request from your branch into `main`.
+
+## Pull Request Checks
+
+When a pull request is opened against `main`, GitHub Actions automatically runs the CI/CD workflow.
+
+For pull requests, the workflow:
+
+- installs the backend dependencies
+- runs the backend tests
+- installs the frontend dependencies
+- runs the frontend typecheck
+- runs the frontend tests
+
+The pull request cannot be merged until the tests pass and at least one person has reviewed and approved the pull request.
+
+## Merging To `main`
+
+After the pull request has passing tests and at least one approval, merge it into `main` using the GitHub website.
+
+Merging to `main` triggers the GitHub Actions workflow again. This time, the workflow runs the tests again and then deploys the application if the tests pass.
+
+On a successful merge to `main`, the workflow deploys to:
+
+- the EC2 server
+- the DigitalOcean droplet
+
+This means every deployment should come from a reviewed pull request with passing tests.
