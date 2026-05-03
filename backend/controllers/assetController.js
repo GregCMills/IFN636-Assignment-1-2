@@ -4,6 +4,7 @@ const auth = require('../services/auth/ClerkAuthAdapter');
 const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
 const AssetStateMachine = require('../services/asset-states/AssetStateMachine');
 const { AdminAuthoriser, CustomerAuthoriser } = require('../services/asset-states/TransitionAuthoriser');
+const { ValidationError, NotFoundError, AuthorisationError, AppError } = require('../services/errors/AppError');
 
 // Destructure status constants for readability and to eliminate hardcoded strings
 // The order must match Asset.STATUSES: ['Available','Rented','Pending Rental','Pending Return','Maintenance']
@@ -42,7 +43,7 @@ const listAssets = async (req, res) => {
 
 const createAsset = async (req, res) => {
   const { typeId, name } = req.body;
-  if (!typeId || !name?.trim()) return res.status(400).json({ message: 'typeId and name are required' });
+  if (!typeId || !name?.trim()) throw new ValidationError('typeId and name are required');
   const asset = await Asset.create({ typeId, name: name.trim(), status: AVAILABLE });
   res.status(201).json(asset);
 };
@@ -58,7 +59,7 @@ const createAsset = async (req, res) => {
  */
 const deleteAsset = async (req, res) => {
   const root = await InventoryTreeBuilder.fromAssetId(req.params.id);
-  if (!root) return res.status(404).json({ message: 'Asset not found' });
+  if (!root) throw new NotFoundError('Asset not found');
   await root.delete(null);
   res.json({ success: true });
 };
@@ -81,7 +82,7 @@ const deleteAsset = async (req, res) => {
  */
 const bulkUpdateStatus = async (req, res) => {
   const { ids, status, clearRentalData } = req.body;
-  if (!ids?.length || !status) return res.status(400).json({ message: 'ids and status are required' });
+  if (!ids?.length || !status) throw new ValidationError('ids and status are required');
 
   // Fetch assets before updating so we can validate against current statuses
   const assets = await Asset.find({ _id: { $in: ids } });
@@ -97,21 +98,31 @@ const bulkUpdateStatus = async (req, res) => {
 
     // Phase 1 & 2: structural + authorisational validation
     if (!machine.canTransitionTo(status, authoriser)) {
-      return res.status(403).json({
-        message: `Not authorised to transition "${asset.name}" from ${asset.status} to ${status}`,
-      });
+      throw new AuthorisationError(
+        `Not authorised to transition "${asset.name}" from ${asset.status} to ${status}`
+      );
     }
 
     // Ownership check — delegated to the authoriser strategy
     if (!authoriser.verifyOwnership(asset, auth.getUserId(req))) {
-      return res.status(403).json({ message: 'You can only update your own assets' });
+      throw new AuthorisationError('You can only update your own assets');
     }
   }
 
-  // Determine whether to clear rental data.  The state machine provides
-  // the default, but the explicit clearRentalData flag in the request
-  // body always takes precedence.
-  const shouldClear = clearRentalData === true;
+  // Determine whether to clear rental data.  Use the state machine's
+  // shouldClearRentalData() as the default.  The explicit clearRentalData
+  // flag in the request body can override it (force-clear or force-preserve).
+  let shouldClear;
+  if (clearRentalData !== undefined) {
+    // Client explicitly specified — use their value
+    shouldClear = clearRentalData === true;
+  } else {
+    // No client preference — ask the first asset's state machine.
+    // All assets share the same transition so any machine gives the same answer.
+    const machine = new AssetStateMachine(assets[0].status);
+    shouldClear = machine.shouldClearRentalData(status);
+  }
+
   const update = shouldClear
     ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
     : { status };
@@ -128,14 +139,14 @@ const bulkUpdateStatus = async (req, res) => {
  */
 const requestRental = async (req, res) => {
   const { items, returnDate } = req.body;
-  if (!items?.length || !returnDate) return res.status(400).json({ message: 'items and returnDate are required' });
+  if (!items?.length || !returnDate) throw new ValidationError('items and returnDate are required');
 
   const updatedAssets = [];
 
   for (const { typeId, quantity } of items) {
     const available = await Asset.find({ typeId, status: AVAILABLE }).limit(quantity);
     if (available.length < quantity) {
-      return res.status(409).json({ message: `Not enough units available` });
+      throw new AppError('Not enough units available', 409);
     }
     for (const asset of available) {
       asset.status         = PENDING_RENTAL;
@@ -157,7 +168,7 @@ const requestRental = async (req, res) => {
 const batchCreateAssets = async (req, res) => {
   const { typeId, names } = req.body;
   if (!typeId || !Array.isArray(names) || names.length === 0) {
-    return res.status(400).json({ message: 'typeId and a non-empty names array are required' });
+    throw new ValidationError('typeId and a non-empty names array are required');
   }
   const docs    = names.map(name => ({ typeId, name: name.trim(), status: AVAILABLE }));
   const created = await Asset.insertMany(docs);

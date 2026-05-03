@@ -20,6 +20,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const auth = require('./services/auth/ClerkAuthAdapter');
 
+const { AppError } = require('./services/errors/AppError');
+
 const app = express();
 
 app.use(auth.contextMiddleware());
@@ -32,9 +34,12 @@ app.use('/api/assets', require('./routes/assetRoutes'));
 
 // Express 5 automatically catches rejected promises from async route handlers
 // and passes them to next(err).  This 4-parameter middleware handles all such
-// errors with a consistent { message: string } response shape.
+// errors.  AppError subclasses carry their own statusCode; unknown errors
+// default to 500 and their message is hidden to prevent information leakage.
 app.use((err, req, res, next) => {
-  res.status(500).json({ message: err.message });
+  const status = err instanceof AppError ? err.statusCode : 500;
+  const message = status < 500 ? err.message : 'Internal server error';
+  res.status(status).json({ message });
 });
 
 if (require.main === module) {

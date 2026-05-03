@@ -8,6 +8,7 @@
 
 const ProductGroup = require('../models/ProductGroup');
 const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
+const { ValidationError, NotFoundError } = require('../services/errors/AppError');
 
 /**
  * GET /api/groups
@@ -30,7 +31,7 @@ const listGroups = async (req, res) => {
  */
 const createGroup = async (req, res) => {
   const { name } = req.body;
-  if (!name?.trim()) return res.status(400).json({ message: 'Name is required' });
+  if (!name?.trim()) throw new ValidationError('Name is required');
   const group = await ProductGroup.create({ name: name.trim() });
   res.status(201).json(group);
 };
@@ -47,7 +48,7 @@ const createGroup = async (req, res) => {
  */
 const deleteGroup = async (req, res) => {
   const root = await InventoryTreeBuilder.fromGroupId(req.params.id);
-  if (!root) return res.status(404).json({ message: 'Group not found' });
+  if (!root) throw new NotFoundError('Group not found');
   await root.delete(null);
   res.json({ success: true });
 };

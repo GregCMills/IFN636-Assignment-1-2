@@ -21,7 +21,7 @@ implementation.
 | 2 | [Facade](#2-facade) | Structural | Confirmed | `server.js`, `controllers/assetController.js` |
 | 3 | [Adapter](#3-adapter) | Structural | Confirmed | `services/auth/AuthAdapter.js`, `services/auth/ClerkAuthAdapter.js`, `models/*.js` |
 | 4 | [Decorator](#4-decorator) | Structural | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js`, `server.js` |
-| 5 | [Chain of Responsibility](#5-chain-of-responsibility) | Behavioral | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js` |
+| 5 | [Chain of Responsibility](#5-chain-of-responsibility) | Behavioral | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js`, `services/errors/AppError.js`, `server.js` |
 | 6 | [Template Method](#6-template-method) | Behavioral | Confirmed | `services/asset-states/AssetState.js`, `services/inventory/InventoryComponent.js` |
 | 7 | [State](#7-state) | Behavioral | Confirmed | `services/asset-states/*.js` |
 | 8 | [Strategy](#8-strategy) | Behavioral | Confirmed | `services/asset-states/TransitionAuthoriser.js` |
@@ -362,6 +362,54 @@ auth.requireAuth() → auth.adminOnly() → createAsset
 2. `auth.adminOnly()` checks authorisation. Non-admin → `403`, chain stops.
 3. `createAsset` is the terminal handler — it processes the business logic.
 
+#### 5c. Error hierarchy as an extension of the chain (`services/errors/AppError.js`)
+
+The custom error class hierarchy (`AppError`, `ValidationError`, `NotFoundError`,
+`AuthorisationError`, `AuthenticationError`) extends the Chain of Responsibility
+by enriching the terminal error handler in `server.js`.
+
+Each error class carries its own `statusCode`:
+
+```js
+class AppError extends Error {
+  constructor(message, statusCode = 500) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+class ValidationError    extends AppError { constructor(m) { super(m, 400); } }
+class NotFoundError       extends AppError { constructor(m) { super(m, 404); } }
+class AuthorisationError  extends AppError { constructor(m) { super(m, 403); } }
+class AuthenticationError extends AppError { constructor(m) { super(m, 401); } }
+```
+
+Controllers throw typed errors (`throw new NotFoundError('Asset not found')`)
+instead of calling `res.status(404).json(...)`. Express 5 catches the thrown
+error and passes it to the global error-handling middleware — the **terminal
+handler** in the chain:
+
+```js
+app.use((err, req, res, next) => {
+  const status = err instanceof AppError ? err.statusCode : 500;
+  const message = status < 500 ? err.message : 'Internal server error';
+  res.status(status).json({ message });
+});
+```
+
+Key design decisions:
+
+- **AppError subclasses** (400/401/403/404): the message is user-facing and
+  shown to the client.
+- **Unexpected errors** (500): the raw message is hidden and replaced with
+  "Internal server error" to prevent information leakage (stack traces, DB
+  connection strings, etc.).
+- **Non-AppError throws** (e.g. Mongoose validation, network errors): treated
+  as 500, message hidden — same safety guarantee.
+
+This pattern separates HTTP concerns from business logic. Controllers express
+error conditions declaratively (`throw new NotFoundError(...)`) and the global
+handler translates error types into HTTP responses in one place.
+
 ### Relationship to Decorator
 
 Express middleware simultaneously implements both Decorator and Chain of
@@ -424,30 +472,61 @@ specific transitions — another primitive operation in the template.
 
 #### 6b. `InventoryComponent` base class (`services/inventory/InventoryComponent.js`)
 
-The `InventoryComponent` base class provides default implementations:
+The `InventoryComponent` base class now provides Template Methods for the two
+core Composite operations:
 
 ```js
 class InventoryComponent {
   getId()                   { throw new Error('Not implemented'); }
   getName()                 { throw new Error('Not implemented'); }
   getChildren()             { return []; }        // leaf-safe default
-  getPhotoPaths()           { throw new Error('Not implemented'); }
-  async delete(storageStrategy) { throw new Error('Not implemented'); }
+
+  // Helper: collect own photo paths (shared by all subclasses)
+  _collectOwnPhotoPaths()   { /* imageUrl + thumbnailUrl */ }
+
+  // Helper: delete own photos via storage strategy
+  async _deleteOwnPhotos(storageStrategy) { /* ... */ }
+
+  // Template Method: collect own photos, then recurse into children
+  getPhotoPaths() { /* calls _collectOwnPhotoPaths → recurses via getChildren() */ }
+
+  // Template Method: delete children first (bottom-up), then own photos, then self
+  async delete(storageStrategy) { /* recurses via getChildren() → _deleteOwnPhotos → _deleteSelf */ }
+
+  // Primitive operation: subclasses override to call their model's findByIdAndDelete
+  async _deleteSelf()        { throw new Error('Not implemented'); }
 }
 ```
 
-`getChildren()` returns an empty array by default, so `AssetComponent` (the
-leaf) inherits this without overriding. The two composite classes override it to
-return their `this.children` arrays. This is the Template Method approach of
-providing a default "do nothing" implementation that subclasses selectively
-override.
+`getPhotoPaths()` and `delete()` are **Template Methods** — they define the
+algorithm skeleton (collect own data → recurse into children for composites,
+skip for leaves) and call the primitive operations `getChildren()` and
+`_deleteSelf()`. Each concrete subclass overrides only `_deleteSelf()`:
+
+| Subclass | `_deleteSelf()` override |
+|---|---|
+| `ProductGroupComponent` | `ProductGroup.findByIdAndDelete(this.doc._id)` |
+| `AssetTypeComponent` | `AssetType.findByIdAndDelete(this.doc._id)` |
+| `AssetComponent` | `Asset.findByIdAndDelete(this.doc._id)` |
+
+The three subclasses previously each had ~30 lines of duplicated `getPhotoPaths()`
+and `delete()` code. The Template Method refactor eliminated that duplication by
+moving the common algorithm into the base class, leaving each subclass with only
+~6 lines of unique code (constructor + accessors + `_deleteSelf()`).
+
+Similarly, `getChildren()` returns an empty array by default, so `AssetComponent`
+(the leaf) inherits the full Template Method behaviour without overriding
+anything. The leaf's `getPhotoPaths()` collects only its own photos (empty
+children loop), and `delete()` skips the children loop and goes straight to
+photo cleanup and self-deletion — correct leaf behaviour by default.
 
 ### Evaluation
 
-Confirmed. The `AssetState.canTransitionTo()` method is a textbook Template
-Method: the algorithm skeleton lives in the superclass and subclasses provide
-the varying step via `getValidTransitions()`. The `InventoryComponent` base
-class uses the same technique with its `getChildren()` default.
+Confirmed. Both `AssetState.canTransitionTo()` and `InventoryComponent.getPhotoPaths()` /
+`InventoryComponent.delete()` are textbook Template Methods: the algorithm skeleton
+lives in the superclass and subclasses provide the varying step via
+`getValidTransitions()` and `_deleteSelf()` respectively. The refactor eliminated
+~50 lines of duplicated code across the three Composite subclasses.
 
 ---
 
@@ -518,18 +597,45 @@ Available ────────→ Pending Rental ──→ Rented ──→ 
 
 #### 7e. Controller integration
 
+The controller (`assetController.js`) integrates the State pattern in the
+`bulkUpdateStatus` handler for two purposes:
+
+**Transition validation:**
+
 ```js
 const assets = await Asset.find({ _id: { $in: ids } });
 
 for (const asset of assets) {
   const machine = new AssetStateMachine(asset.status);
   if (!machine.canTransitionTo(status, authoriser)) {
-    return res.status(403).json({
-      message: `Not authorised to transition "${asset.name}" from ${asset.status} to ${status}`,
-    });
+    throw new AuthorisationError(
+      `Not authorised to transition "${asset.name}" from ${asset.status} to ${status}`
+    );
   }
 }
 ```
+
+**Rental data clearing (state-machine-driven):**
+
+```js
+let shouldClear;
+if (clearRentalData !== undefined) {
+  // Client explicitly specified — use their value (backward compatible)
+  shouldClear = clearRentalData === true;
+} else {
+  // No client preference — ask the state machine.
+  // All assets share the same transition so any machine gives the same answer.
+  const machine = new AssetStateMachine(assets[0].status);
+  shouldClear = machine.shouldClearRentalData(status);
+}
+```
+
+The `shouldClearRentalData()` method is now **wired into the controller** as a
+default. If the client sends an explicit `clearRentalData` flag, that value
+takes precedence. Otherwise, the state machine's encapsulated knowledge of
+transition side effects determines whether rental data is cleared. For example,
+`PendingReturnState → Available` automatically clears `rentedByUserId` and
+`returnDate` without the client needing to specify it.
 
 ### Why State
 
@@ -827,11 +933,14 @@ The `delete()` method follows the same algorithm skeleton across all three
 `InventoryComponent` subclasses (delete children → clean up photos → delete
 self) — a structural Template Method across the Composite hierarchy.
 
-### Decorator + Chain of Responsibility
+### Error Hierarchy + Chain of Responsibility
 
-Express middleware implements both patterns simultaneously: Decorator (each
-middleware adds behaviour) and Chain of Responsibility (each middleware decides
-whether to handle the request or pass it along).
+The `AppError` class hierarchy (`services/errors/AppError.js`) extends the
+Chain of Responsibility by enriching the terminal error handler. Thrown
+`AppError` subclasses carry their own HTTP status code; the global error
+middleware in `server.js` inspects the error type and responds accordingly.
+This cleanly separates HTTP concerns (status codes) from business logic
+(thrown errors).
 
 ### All patterns coexist cleanly
 
@@ -844,15 +953,15 @@ Strategy in a single request flow without any pattern fighting for control.
 
 | Pattern | Evidence |
 |---------|----------|
-| State | 30 dedicated unit tests (`test/state-pattern.test.js`). All 138 backend tests pass. |
+| State | 30 dedicated unit tests (`test/state-pattern.test.js`). 1 integration test verifying state-machine-driven rental data clearing (`test/assets.test.js`). All 148 backend tests pass. |
 | Strategy | Dedicated unit tests covering `canTransition()` and `verifyOwnership()` in `test/state-pattern.test.js`. Customer/Admin role and ownership distinctions verified by integration tests in `test/assets.test.js`. |
 | Adapter | 20 dedicated unit tests (`test/adapter.test.js`). Correctly handles Clerk v1 and v2 request shapes, normalises user objects, and degrades gracefully on API failures. |
-| Composite | 14 dedicated integration tests (`test/composite.test.js`). |
+| Composite | 14 dedicated integration tests (`test/composite.test.js`). Template Method refactor eliminated ~50 lines of duplicated code; all 14 tests pass unchanged. |
 | Singleton | Verified by Node.js module caching — `require()` returns the same object. |
 | Facade | `server.js` is the single entry point for all consumers. |
 | Decorator | Middleware stack verified by route-level integration tests. |
-| Chain of Responsibility | Middleware chain verified by auth integration tests (401/403 responses). |
-| Template Method | Verified by State pattern unit tests (each state class's `getValidTransitions()` override tested). |
+| Chain of Responsibility | Middleware chain verified by auth integration tests (401/403 responses). Error hierarchy extends the chain via the global error handler in `server.js`. |
+| Template Method | Verified by State pattern unit tests (each state class's `getValidTransitions()` override tested) and Composite integration tests (all subclasses inherit `getPhotoPaths()` and `delete()` from `InventoryComponent`). |
 
 ---
 
@@ -862,6 +971,11 @@ Route handlers contain no explicit try/catch blocks. Express 5 automatically
 catches rejected promises from `async` handlers and forwards them to
 `next(err)`. A single error-handling middleware in `server.js` (the Express
 standard four-parameter form: `(err, req, res, next)`) responds with a
-consistent `{ message: string }` shape. This eliminates boilerplate previously
-duplicated across handlers in multiple controllers without requiring a custom
-wrapper utility.
+consistent `{ message: string }` shape.
+
+The custom `AppError` class hierarchy (`services/errors/AppError.js`) extends
+this by giving each error type its own HTTP status code. Controllers throw
+typed errors (`throw new NotFoundError('Asset not found')`) instead of calling
+`res.status(404).json(...)`, keeping HTTP concerns in one place — the global
+error handler. Unexpected errors (those not extending `AppError`) default to
+500 and hide their message to prevent information leakage.

@@ -8,6 +8,7 @@
 
 const AssetType = require('../models/AssetType');
 const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
+const { ValidationError, NotFoundError } = require('../services/errors/AppError');
 
 /**
  * GET /api/types
@@ -30,7 +31,7 @@ const listTypes = async (req, res) => {
  */
 const createType = async (req, res) => {
   const { groupId, name } = req.body;
-  if (!groupId || !name?.trim()) return res.status(400).json({ message: 'groupId and name are required' });
+  if (!groupId || !name?.trim()) throw new ValidationError('groupId and name are required');
   const type = await AssetType.create({ groupId, name: name.trim() });
   res.status(201).json(type);
 };
@@ -47,7 +48,7 @@ const createType = async (req, res) => {
  */
 const deleteType = async (req, res) => {
   const root = await InventoryTreeBuilder.fromTypeId(req.params.id);
-  if (!root) return res.status(404).json({ message: 'Type not found' });
+  if (!root) throw new NotFoundError('Type not found');
   await root.delete(null);
   res.json({ success: true });
 };

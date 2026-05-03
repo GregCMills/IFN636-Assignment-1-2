@@ -7,6 +7,7 @@
 
 const User = require('../models/User');
 const auth = require('../services/auth/ClerkAuthAdapter');
+const { NotFoundError } = require('../services/errors/AppError');
 
 /**
  * GET /api/auth/profile
@@ -19,7 +20,7 @@ const auth = require('../services/auth/ClerkAuthAdapter');
 const getProfile = async (req, res) => {
   const clerkUserId = auth.getUserId(req);
   const user = await User.findOne({ clerkId: clerkUserId });
-  if (!user) return res.status(404).json({ message: 'Profile not found' });
+  if (!user) throw new NotFoundError('Profile not found');
   res.status(200).json({ address: user.address, phone: user.phone });
 };
 

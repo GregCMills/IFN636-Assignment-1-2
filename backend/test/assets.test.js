@@ -415,6 +415,34 @@ describe('Asset Management API', () => {
       expect(updated.returnDate).to.equal('2026-04-15');
     });
 
+    it('clears rental data by default when state machine says so (no clearRentalData flag)', async () => {
+      // Set up an asset in "Pending Return" with rental data.
+      // PendingReturnState.shouldClearRentalData('Available') returns true,
+      // so rental data should be cleared without the client needing to send
+      // the clearRentalData flag.
+      const group = await mkGroup();
+      const type  = await mkType(group.id);
+      const asset = await Asset.create({
+        typeId: type.id,
+        name: 'Rented Unit',
+        status: 'Pending Return',
+        rentedByUserId: 'user-123',
+        returnDate: '2025-01-01',
+      });
+
+      // Transition to Available WITHOUT sending clearRentalData
+      const res = await request(app)
+        .patch('/api/assets/bulk-status')
+        .set('Authorization', 'Bearer valid')
+        .send({ ids: [asset.id], status: 'Available' });
+
+      expect(res.status).to.equal(200);
+      const updated = res.body[0];
+      expect(updated.status).to.equal('Available');
+      expect(updated.rentedByUserId).to.be.undefined;
+      expect(updated.returnDate).to.be.undefined;
+    });
+
     it('returns 400 when ids array is missing', async () => {
       const res = await request(app).patch('/api/assets/bulk-status').send({ status: 'Available' });
       expect(res.status).to.equal(400);
