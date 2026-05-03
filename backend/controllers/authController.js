@@ -17,14 +17,10 @@ const auth = require('../services/auth/ClerkAuthAdapter');
  * @param {import('express').Response} res - { address: string, phone: string }
  */
 const getProfile = async (req, res) => {
-  try {
-    const clerkUserId = auth.getUserId(req);
-    const user = await User.findOne({ clerkId: clerkUserId });
-    if (!user) return res.status(404).json({ message: 'Profile not found' });
-    res.status(200).json({ address: user.address, phone: user.phone });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
+  const clerkUserId = auth.getUserId(req);
+  const user = await User.findOne({ clerkId: clerkUserId });
+  if (!user) return res.status(404).json({ message: 'Profile not found' });
+  res.status(200).json({ address: user.address, phone: user.phone });
 };
 
 /**
@@ -36,18 +32,14 @@ const getProfile = async (req, res) => {
  * @param {import('express').Response} res - { address: string, phone: string }
  */
 const updateUserProfile = async (req, res) => {
-  try {
-    const clerkUserId = auth.getUserId(req);
-    const { address, phone } = req.body;
-    const user = await User.findOneAndUpdate(
-      { clerkId: clerkUserId },
-      { address, phone },
-      { new: true, upsert: true }
-    );
-    res.json({ address: user.address, phone: user.phone });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  const clerkUserId = auth.getUserId(req);
+  const { address, phone } = req.body;
+  const user = await User.findOneAndUpdate(
+    { clerkId: clerkUserId },
+    { address, phone },
+    { new: true, upsert: true }
+  );
+  res.json({ address: user.address, phone: user.phone });
 };
 
 module.exports = { getProfile, updateUserProfile };

@@ -4,8 +4,10 @@
  *
  * Middleware pipeline (in order):
  *   1. auth.contextMiddleware() — attaches auth context to every request
- *   2. cors                   — allows cross-origin requests (configured for dev; tighten in production)
- *   3. express.json           — parses JSON request bodies
+ *   2. cors                     — allows cross-origin requests (configured for dev; tighten in production)
+ *   3. express.json             — parses JSON request bodies
+ *   4. Route handlers           — /api/auth, /api/groups, /api/types, /api/assets
+ *   5. Error-handling middleware — catches rejected async promises (Express 5); returns { message: string }
  *
  * The `require.main === module` guard means the server only starts listening
  * when run directly (e.g. `node server.js`), not when imported by tests.
@@ -27,6 +29,13 @@ app.use('/api/auth',   require('./routes/authRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/types',  require('./routes/typeRoutes'));
 app.use('/api/assets', require('./routes/assetRoutes'));
+
+// Express 5 automatically catches rejected promises from async route handlers
+// and passes them to next(err).  This 4-parameter middleware handles all such
+// errors with a consistent { message: string } response shape.
+app.use((err, req, res, next) => {
+  res.status(500).json({ message: err.message });
+});
 
 if (require.main === module) {
     connectDB();

@@ -17,12 +17,8 @@ const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder
  * @param {import('express').Response} res
  */
 const listTypes = async (req, res) => {
-  try {
-    const types = await AssetType.find().sort({ name: 1 });
-    res.json(types);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const types = await AssetType.find().sort({ name: 1 });
+  res.json(types);
 };
 
 /**
@@ -33,14 +29,10 @@ const listTypes = async (req, res) => {
  * @param {import('express').Response} res - 201 with the created type, or 400 if fields missing
  */
 const createType = async (req, res) => {
-  try {
-    const { groupId, name } = req.body;
-    if (!groupId || !name?.trim()) return res.status(400).json({ message: 'groupId and name are required' });
-    const type = await AssetType.create({ groupId, name: name.trim() });
-    res.status(201).json(type);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const { groupId, name } = req.body;
+  if (!groupId || !name?.trim()) return res.status(400).json({ message: 'groupId and name are required' });
+  const type = await AssetType.create({ groupId, name: name.trim() });
+  res.status(201).json(type);
 };
 
 /**
@@ -54,14 +46,10 @@ const createType = async (req, res) => {
  * @param {import('express').Response} res - { success: true } or 404 if not found
  */
 const deleteType = async (req, res) => {
-  try {
-    const root = await InventoryTreeBuilder.fromTypeId(req.params.id);
-    if (!root) return res.status(404).json({ message: 'Type not found' });
-    await root.delete(null);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const root = await InventoryTreeBuilder.fromTypeId(req.params.id);
+  if (!root) return res.status(404).json({ message: 'Type not found' });
+  await root.delete(null);
+  res.json({ success: true });
 };
 
 module.exports = { listTypes, createType, deleteType };

@@ -9,7 +9,7 @@
  * 2. Invalid transitions are correctly rejected
  * 3. `getValidTransitions()` returns the correct array
  * 4. `shouldClearRentalData()` returns the correct default
- * 5. TransitionAuthoriser enforces role-based rules
+ * 5. TransitionAuthoriser enforces role-based rules (canTransition + verifyOwnership)
  * 6. Unknown status strings throw on construction
  *
  * The integration-level tests (API calls through Express) live in
@@ -184,6 +184,13 @@ describe('AssetStateMachine (State pattern)', () => {
         expect(auth.canTransition('Rented', 'Pending Return')).to.be.true;
         expect(auth.canTransition('Pending Return', 'Available')).to.be.true;
       });
+
+      it('admin always passes ownership check', () => {
+        const auth = new AdminAuthoriser();
+        expect(auth.verifyOwnership({ rentedByUserId: 'other-user' }, 'admin-user')).to.be.true;
+        expect(auth.verifyOwnership({ rentedByUserId: null }, 'anyone')).to.be.true;
+        expect(auth.verifyOwnership({}, 'anyone')).to.be.true;
+      });
     });
 
     describe('CustomerAuthoriser', () => {
@@ -206,6 +213,21 @@ describe('AssetStateMachine (State pattern)', () => {
       it('blocks Pending Rental (customers cannot request rentals via status change)', () => {
         const auth = new CustomerAuthoriser();
         expect(auth.canTransition('Available', 'Pending Rental')).to.be.false;
+      });
+
+      it('passes ownership check when user owns the asset', () => {
+        const auth = new CustomerAuthoriser();
+        expect(auth.verifyOwnership({ rentedByUserId: 'user1' }, 'user1')).to.be.true;
+      });
+
+      it('fails ownership check when user does not own the asset', () => {
+        const auth = new CustomerAuthoriser();
+        expect(auth.verifyOwnership({ rentedByUserId: 'user1' }, 'user2')).to.be.false;
+      });
+
+      it('fails ownership check when asset has no rentedByUserId', () => {
+        const auth = new CustomerAuthoriser();
+        expect(auth.verifyOwnership({ rentedByUserId: null }, 'user1')).to.be.false;
       });
     });
   });

@@ -17,12 +17,8 @@ const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder
  * @param {import('express').Response} res
  */
 const listGroups = async (req, res) => {
-  try {
-    const groups = await ProductGroup.find().sort({ name: 1 });
-    res.json(groups);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const groups = await ProductGroup.find().sort({ name: 1 });
+  res.json(groups);
 };
 
 /**
@@ -33,14 +29,10 @@ const listGroups = async (req, res) => {
  * @param {import('express').Response} res - 201 with the created group, or 400 if name missing
  */
 const createGroup = async (req, res) => {
-  try {
-    const { name } = req.body;
-    if (!name?.trim()) return res.status(400).json({ message: 'Name is required' });
-    const group = await ProductGroup.create({ name: name.trim() });
-    res.status(201).json(group);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ message: 'Name is required' });
+  const group = await ProductGroup.create({ name: name.trim() });
+  res.status(201).json(group);
 };
 
 /**
@@ -54,14 +46,10 @@ const createGroup = async (req, res) => {
  * @param {import('express').Response} res - { success: true } or 404 if not found
  */
 const deleteGroup = async (req, res) => {
-  try {
-    const root = await InventoryTreeBuilder.fromGroupId(req.params.id);
-    if (!root) return res.status(404).json({ message: 'Group not found' });
-    await root.delete(null);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const root = await InventoryTreeBuilder.fromGroupId(req.params.id);
+  if (!root) return res.status(404).json({ message: 'Group not found' });
+  await root.delete(null);
+  res.json({ success: true });
 };
 
 module.exports = { listGroups, createGroup, deleteGroup };

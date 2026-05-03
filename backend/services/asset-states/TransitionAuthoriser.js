@@ -22,8 +22,9 @@
  */
 
 /**
- * Base class: all authorisers must implement canTransition().
- * Throws if called directly — serves as an interface contract.
+ * Base class: all authorisers must implement canTransition() and
+ * verifyOwnership().  Throws if called directly — serves as an
+ * interface contract.
  */
 class TransitionAuthoriser {
   /**
@@ -35,6 +36,19 @@ class TransitionAuthoriser {
    * @returns {boolean}
    */
   canTransition(currentStatus, newStatus) {
+    throw new Error('Not implemented');
+  }
+
+  /**
+   * Whether the authenticated user owns (and therefore may modify) the
+   * given asset.  Admins always pass this check; customers must have
+   * `rentedByUserId` matching their Clerk ID.
+   *
+   * @param {object}  asset  — a Mongoose Asset document (must have `.rentedByUserId`)
+   * @param {string}  userId — the authenticated user's Clerk ID
+   * @returns {boolean}
+   */
+  verifyOwnership(asset, userId) {
     throw new Error('Not implemented');
   }
 }
@@ -49,13 +63,16 @@ class AdminAuthoriser extends TransitionAuthoriser {
   canTransition(currentStatus, newStatus) {
     return true;
   }
+
+  /** @returns {boolean} Always true — admins are exempt from ownership checks. */
+  verifyOwnership(asset, userId) {
+    return true;
+  }
 }
 
 /**
  * Customer authoriser: customers may only set Rented or Pending Return
- * on assets they own.  The ownership check (is this asset assigned to the
- * current user?) is performed by the controller, not by this class — the
- * authoriser only enforces the role-level allowed statuses.
+ * on assets they personally own.
  *
  * ## Allowed transitions for customers
  *
@@ -71,6 +88,17 @@ class CustomerAuthoriser extends TransitionAuthoriser {
    */
   canTransition(currentStatus, newStatus) {
     return ['Rented', 'Pending Return'].includes(newStatus);
+  }
+
+  /**
+   * Customers may only modify assets where `rentedByUserId` matches their ID.
+   *
+   * @param {object} asset  — Mongoose Asset document with `.rentedByUserId`
+   * @param {string} userId — the authenticated user's Clerk ID
+   * @returns {boolean}
+   */
+  verifyOwnership(asset, userId) {
+    return asset.rentedByUserId === userId;
   }
 }
 
