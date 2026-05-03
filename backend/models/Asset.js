@@ -8,6 +8,8 @@ const assetSchema = new mongoose.Schema({
   status:          { type: String, enum: STATUSES, default: 'Available' },
   rentedByUserId:  { type: String },   // Clerk user ID
   returnDate:      { type: String },   // YYYY-MM-DD string
+  imageUrl:        { type: String },   // Photo URL (populated by the photo service)
+  thumbnailUrl:    { type: String },   // Thumbnail URL (populated by the photo service)
 });
 
 assetSchema.set('toJSON', {

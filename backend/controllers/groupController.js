@@ -1,14 +1,13 @@
 /**
  * @module groupController
  * CRUD handlers for ProductGroup resources.
- * Deleting a group performs a cascading delete: all AssetTypes belonging to
- * the group and all Assets belonging to those types are removed first so that
- * no orphaned documents remain in the database.
+ * Deleting a group uses the Composite pattern: an InventoryTreeBuilder builds
+ * the full subtree and delete() cascades recursively through all child
+ * AssetTypes and Assets, preventing orphaned documents.
  */
 
 const ProductGroup = require('../models/ProductGroup');
-const AssetType    = require('../models/AssetType');
-const Asset        = require('../models/Asset');
+const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
 
 /**
  * GET /api/groups
@@ -46,22 +45,19 @@ const createGroup = async (req, res) => {
 
 /**
  * DELETE /api/groups/:id
- * Deletes a product group and all of its child AssetTypes and Assets in order,
- * preventing orphaned documents. The three-step cascade must be sequential:
- *   1. Collect type IDs belonging to the group
- *   2. Delete all assets that reference those type IDs
- *   3. Delete the types, then the group itself
+ * Builds the full inventory tree rooted at this group via InventoryTreeBuilder,
+ * then calls delete() to recursively remove all child AssetTypes and Assets
+ * before removing the group itself. Passes null as the storageStrategy so
+ * photo file deletion is skipped (placeholder for the future photo plan).
  *
  * @param {import('express').Request}  req - params: { id: string }
- * @param {import('express').Response} res - { success: true } on success
+ * @param {import('express').Response} res - { success: true } or 404 if not found
  */
 const deleteGroup = async (req, res) => {
   try {
-    const types   = await AssetType.find({ groupId: req.params.id });
-    const typeIds = types.map(t => t._id);
-    await Asset.deleteMany({ typeId: { $in: typeIds } });
-    await AssetType.deleteMany({ groupId: req.params.id });
-    await ProductGroup.findByIdAndDelete(req.params.id);
+    const root = await InventoryTreeBuilder.fromGroupId(req.params.id);
+    if (!root) return res.status(404).json({ message: 'Group not found' });
+    await root.delete(null);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });

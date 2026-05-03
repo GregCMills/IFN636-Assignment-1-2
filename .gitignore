@@ -30,3 +30,4 @@ yarn-error.log*
 # extra notes and stuff
 *.notes.md
 *.plan.md
+*.report.md

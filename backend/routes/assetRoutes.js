@@ -1,3 +1,19 @@
+/**
+ * @module assetRoutes
+ * Routes for managing Assets (individual equipment units).
+ * Read access requires authentication; write/delete/batch operations are
+ * restricted to admins.  Status transitions (bulk-status, request-rental)
+ * have additional role-based rules enforced in the controller.
+ *
+ *   GET    /api/assets              — list all assets with user enrichment
+ *   POST   /api/assets              — create a single asset (admin)
+ *   POST   /api/assets/batch        — create multiple assets at once (admin)
+ *   PATCH  /api/assets/bulk-status  — update status for one or more assets
+ *   POST   /api/assets/request-rental — request rental (authenticated users)
+ *   POST   /api/assets/reset-seed   — wipe and re-seed all data (admin)
+ *   DELETE /api/assets/:id          — delete an asset (admin)
+ */
+
 const express = require('express');
 const auth = require('../services/auth/ClerkAuthAdapter');
 const {

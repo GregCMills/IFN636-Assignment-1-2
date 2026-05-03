@@ -1,6 +1,7 @@
 const Asset = require('../models/Asset');
 const { SEED_GROUPS, SEED_TYPES, SEED_ASSETS } = require('../data/seedData');
 const auth = require('../services/auth/ClerkAuthAdapter');
+const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
 
 /**
  * Enriches an array of Mongoose Asset documents with Clerk user name / email.
@@ -48,9 +49,20 @@ const createAsset = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/assets/:id
+ * Builds a leaf node via InventoryTreeBuilder, then calls delete() to
+ * remove the asset from the database. Passes null as the storageStrategy
+ * so photo file deletion is skipped (placeholder for the future photo plan).
+ *
+ * @param {import('express').Request}  req - params: { id: string }
+ * @param {import('express').Response} res - { success: true } or 404 if not found
+ */
 const deleteAsset = async (req, res) => {
   try {
-    await Asset.findByIdAndDelete(req.params.id);
+    const root = await InventoryTreeBuilder.fromAssetId(req.params.id);
+    if (!root) return res.status(404).json({ message: 'Asset not found' });
+    await root.delete(null);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
