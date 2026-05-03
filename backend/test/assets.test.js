@@ -361,8 +361,17 @@ describe('Asset Management API', () => {
     it('admin can update status for multiple assets at once', async () => {
       const group  = await mkGroup();
       const type   = await mkType(group.id);
-      const assetA = await mkAsset(type.id, 'Unit 001');
-      const assetB = await mkAsset(type.id, 'Unit 002');
+      // Must start in Pending Rental because Available → Rented is not a valid
+      // transition under the State pattern — assets must go through the rental
+      // request → approve workflow.
+      const assetA = await Asset.create({
+        typeId: type.id, name: 'Unit 001', status: 'Pending Rental',
+        rentedByUserId: 'test_user_id', returnDate: '2026-05-01',
+      });
+      const assetB = await Asset.create({
+        typeId: type.id, name: 'Unit 002', status: 'Pending Rental',
+        rentedByUserId: 'test_user_id', returnDate: '2026-05-01',
+      });
 
       const res = await request(app).patch('/api/assets/bulk-status')
         .send({ ids: [assetA.id, assetB.id], status: 'Rented' });
@@ -374,8 +383,10 @@ describe('Asset Management API', () => {
     it('clears rentedByUserId and returnDate when clearRentalData is true', async () => {
       const group = await mkGroup();
       const type  = await mkType(group.id);
+      // Must start in Pending Return because Rented → Available is not a valid
+      // transition under the State pattern — returns must be approved first.
       const asset = await Asset.create({
-        typeId: type.id, name: 'Unit 001', status: 'Rented',
+        typeId: type.id, name: 'Unit 001', status: 'Pending Return',
         rentedByUserId: 'test_user_id', returnDate: '2026-04-15',
       });
 
@@ -552,6 +563,68 @@ describe('Asset Management API', () => {
         .send({ ids: [asset.id], status: 'Maintenance' });
 
       expect(res.status).to.equal(403);
+    });
+  });
+
+  // ── Rental Request workflow ──────────────────────────────────────────────────
+
+  describe('POST /api/assets/request-rental', () => {
+    it('marks available assets as Pending Rental for the requesting customer', async () => {
+      clerkMock.setRole('customer');
+      const group = await mkGroup();
+      const type  = await mkType(group.id);
+      await mkAsset(type.id, 'Unit 001', 'Available');
+      await mkAsset(type.id, 'Unit 002', 'Available');
+
+      const res = await request(app).post('/api/assets/request-rental')
+        .send({ items: [{ typeId: type.id, quantity: 2 }], returnDate: '2026-05-20' });
+
+      expect(res.status).to.equal(200);
+      expect(res.body).to.have.length(2);
+      expect(res.body.every(a => a.status === 'Pending Rental')).to.be.true;
+      expect(res.body.every(a => a.rentedByUserId === 'test_user_id')).to.be.true;
+      expect(res.body.every(a => a.returnDate === '2026-05-20')).to.be.true;
+    });
+
+    it('returns 409 when not enough units are available', async () => {
+      clerkMock.setRole('customer');
+      const group = await mkGroup();
+      const type  = await mkType(group.id);
+      await mkAsset(type.id, 'Unit 001', 'Available'); // only 1 available
+
+      const res = await request(app).post('/api/assets/request-rental')
+        .send({ items: [{ typeId: type.id, quantity: 3 }], returnDate: '2026-05-20' });
+
+      expect(res.status).to.equal(409);
+    });
+
+    it('only picks up Available assets (not Rented, Maintenance, etc.)', async () => {
+      clerkMock.setRole('customer');
+      const group = await mkGroup();
+      const type  = await mkType(group.id);
+      await Asset.create({ typeId: type.id, name: 'Unit 001', status: 'Available' });
+      await Asset.create({ typeId: type.id, name: 'Unit 002', status: 'Rented', rentedByUserId: 'other_user_id' });
+      await Asset.create({ typeId: type.id, name: 'Unit 003', status: 'Maintenance' });
+
+      const res = await request(app).post('/api/assets/request-rental')
+        .send({ items: [{ typeId: type.id, quantity: 2 }], returnDate: '2026-05-20' });
+
+      // Only 1 available, requesting 2 → conflict
+      expect(res.status).to.equal(409);
+    });
+
+    it('returns 400 when items array is missing', async () => {
+      const res = await request(app).post('/api/assets/request-rental')
+        .send({ returnDate: '2026-05-20' });
+      expect(res.status).to.equal(400);
+    });
+
+    it('returns 400 when returnDate is missing', async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id);
+      const res = await request(app).post('/api/assets/request-rental')
+        .send({ items: [{ typeId: type.id, quantity: 1 }] });
+      expect(res.status).to.equal(400);
     });
   });
 

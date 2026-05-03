@@ -2,6 +2,12 @@ const Asset = require('../models/Asset');
 const { SEED_GROUPS, SEED_TYPES, SEED_ASSETS } = require('../data/seedData');
 const auth = require('../services/auth/ClerkAuthAdapter');
 const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
+const AssetStateMachine = require('../services/asset-states/AssetStateMachine');
+const { AdminAuthoriser, CustomerAuthoriser } = require('../services/asset-states/TransitionAuthoriser');
+
+// Destructure status constants for readability and to eliminate hardcoded strings
+// The order must match Asset.STATUSES: ['Available','Rented','Pending Rental','Pending Return','Maintenance']
+const [AVAILABLE, RENTED, PENDING_RENTAL, PENDING_RETURN, MAINTENANCE] = Asset.STATUSES;
 
 /**
  * Enriches an array of Mongoose Asset documents with Clerk user name / email.
@@ -42,7 +48,7 @@ const createAsset = async (req, res) => {
   try {
     const { typeId, name } = req.body;
     if (!typeId || !name?.trim()) return res.status(400).json({ message: 'typeId and name are required' });
-    const asset = await Asset.create({ typeId, name: name.trim(), status: 'Available' });
+    const asset = await Asset.create({ typeId, name: name.trim(), status: AVAILABLE });
     res.status(201).json(asset);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -72,29 +78,56 @@ const deleteAsset = async (req, res) => {
 /**
  * PATCH /api/assets/bulk-status
  * Body: { ids: string[], status: string, clearRentalData?: boolean }
- * Admins can set any status. Customers may only transition Rented ↔ Pending Return
- * on assets they own.
+ *
+ * Uses the AssetStateMachine (State pattern) to validate that every
+ * requested transition is structurally valid for the asset's current
+ * status, then uses the TransitionAuthoriser (Strategy pattern) to
+ * check whether the user's role permits the transition.
+ *
+ * Two-phase validation:
+ * 1. State machine checks structural validity (e.g. Available → Rented is invalid)
+ * 2. Authoriser checks role permissions (e.g. customer cannot set Maintenance)
+ *
+ * Admins can perform any structurally valid transition.
+ * Customers may only transition Rented ↔ Pending Return on their own assets.
  */
 const bulkUpdateStatus = async (req, res) => {
   try {
     const { ids, status, clearRentalData } = req.body;
     if (!ids?.length || !status) return res.status(400).json({ message: 'ids and status are required' });
 
+    // Fetch assets before updating so we can validate against current statuses
+    const assets = await Asset.find({ _id: { $in: ids } });
+
+    // Determine the user's role and select the appropriate authoriser strategy
     const authUser = await auth.getUser(auth.getUserId(req));
     const isAdmin   = authUser.role === 'admin';
+    const authoriser = isAdmin ? new AdminAuthoriser() : new CustomerAuthoriser();
 
-    if (!isAdmin) {
-      const allowed = ['Rented', 'Pending Return'];
-      if (!allowed.includes(status)) {
-        return res.status(403).json({ message: 'Not authorised for this status transition' });
+    // Validate each asset's transition before making any changes
+    for (const asset of assets) {
+      const machine = new AssetStateMachine(asset.status);
+
+      // Phase 1 & 2: structural + authorisational validation
+      if (!machine.canTransitionTo(status, authoriser)) {
+        return res.status(403).json({
+          message: `Not authorised to transition "${asset.name}" from ${asset.status} to ${status}`,
+        });
       }
-      const owned = await Asset.find({ _id: { $in: ids }, rentedByUserId: auth.getUserId(req) });
-      if (owned.length !== ids.length) {
-        return res.status(403).json({ message: 'You can only update your own assets' });
+
+      // Customer ownership check — must run after transition validation
+      if (!isAdmin) {
+        if (asset.rentedByUserId !== auth.getUserId(req)) {
+          return res.status(403).json({ message: 'You can only update your own assets' });
+        }
       }
     }
 
-    const update = clearRentalData
+    // Determine whether to clear rental data.  The state machine provides
+    // the default, but the explicit clearRentalData flag in the request
+    // body always takes precedence.
+    const shouldClear = clearRentalData === true;
+    const update = shouldClear
       ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
       : { status };
 
@@ -119,12 +152,12 @@ const requestRental = async (req, res) => {
     const updatedAssets = [];
 
     for (const { typeId, quantity } of items) {
-      const available = await Asset.find({ typeId, status: 'Available' }).limit(quantity);
+      const available = await Asset.find({ typeId, status: AVAILABLE }).limit(quantity);
       if (available.length < quantity) {
         return res.status(409).json({ message: `Not enough units available` });
       }
       for (const asset of available) {
-        asset.status         = 'Pending Rental';
+        asset.status         = PENDING_RENTAL;
         asset.rentedByUserId = auth.getUserId(req);
         asset.returnDate     = returnDate;
         await asset.save();
@@ -149,7 +182,7 @@ const batchCreateAssets = async (req, res) => {
     if (!typeId || !Array.isArray(names) || names.length === 0) {
       return res.status(400).json({ message: 'typeId and a non-empty names array are required' });
     }
-    const docs    = names.map(name => ({ typeId, name: name.trim(), status: 'Available' }));
+    const docs    = names.map(name => ({ typeId, name: name.trim(), status: AVAILABLE }));
     const created = await Asset.insertMany(docs);
     res.status(201).json(created);
   } catch (err) {
