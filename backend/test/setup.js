@@ -2,31 +2,46 @@
 
 const mongoose = require('mongoose');
 
-// ── Clerk mock ────────────────────────────────────────────────────────────────
+// ── Auth adapter mock ─────────────────────────────────────────────────────────
 // Injected into the require cache BEFORE any test file loads the app,
-// so every require('../server') receives the stubbed version of @clerk/express.
+// so every require('../server') receives the stubbed adapter instead of real Clerk.
 
 let _mockAuth = { userId: 'test_user_id' }; // set to null to simulate unauthenticated
 let _mockRole = 'admin';
 
-require.cache[require.resolve('@clerk/express')] = {
-  id:       require.resolve('@clerk/express'),
-  filename: require.resolve('@clerk/express'),
-  loaded:   true,
-  exports: {
-    clerkMiddleware: () => (req, res, next) => next(),
-    requireAuth: () => (req, res, next) => {
-      if (!_mockAuth) return res.status(401).json({ message: 'Unauthenticated' });
-      req.auth = _mockAuth;
-      next();
-    },
-    clerkClient: {
-      users: {
-        getUser:     async () => ({ publicMetadata: { role: _mockRole } }),
-        getUserList: async () => ({ data: [] }),
-      },
-    },
+const mockAuthAdapter = {
+  contextMiddleware: () => (req, res, next) => next(),
+
+  requireAuth: () => (req, res, next) => {
+    if (!_mockAuth) return res.status(401).json({ message: 'Unauthenticated' });
+    req.auth = _mockAuth;
+    next();
   },
+
+  adminOnly: () => async (req, res, next) => {
+    if (_mockRole !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    next();
+  },
+
+  getUserId: (req) => _mockAuth?.userId ?? null,
+
+  getUser: async () => ({
+    id:    'test_user_id',
+    email: 'test@example.com',
+    name:  'Test User',
+    role:  _mockRole,
+  }),
+
+  getUsers: async () => ({}),
+};
+
+require.cache[require.resolve('../services/auth/ClerkAuthAdapter')] = {
+  id:       require.resolve('../services/auth/ClerkAuthAdapter'),
+  filename: require.resolve('../services/auth/ClerkAuthAdapter'),
+  loaded:   true,
+  exports:  mockAuthAdapter,
 };
 
 // Exposed as global.clerkMock so any test file can control auth state per-test

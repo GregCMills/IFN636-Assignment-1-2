@@ -1,9 +1,6 @@
 const Asset = require('../models/Asset');
 const { SEED_GROUPS, SEED_TYPES, SEED_ASSETS } = require('../data/seedData');
-
-/** Clerk v2 exposes req.auth as a function; v1 / test stubs expose it as a plain object. */
-const getAuthUserId = (req) =>
-  typeof req.auth === 'function' ? req.auth()?.userId : req.auth?.userId;
+const auth = require('../services/auth/ClerkAuthAdapter');
 
 /**
  * Enriches an array of Mongoose Asset documents with Clerk user name / email.
@@ -17,18 +14,7 @@ const enrichWithClerkUsers = async (assets) => {
 
   let userMap = {};
   if (uniqueUserIds.length > 0) {
-    const { clerkClient } = require('@clerk/express');
-    try {
-      const { data: clerkUsers } = await clerkClient.users.getUserList({ userId: uniqueUserIds });
-      clerkUsers.forEach(u => {
-        userMap[u.id] = {
-          email: u.emailAddresses[0]?.emailAddress ?? '',
-          name:  [u.firstName, u.lastName].filter(Boolean).join(' ') || null,
-        };
-      });
-    } catch {
-      // Clerk unavailable — return assets without enrichment rather than failing
-    }
+    userMap = await auth.getUsers(uniqueUserIds);
   }
 
   return assets.map(a => {
@@ -82,16 +68,15 @@ const bulkUpdateStatus = async (req, res) => {
     const { ids, status, clearRentalData } = req.body;
     if (!ids?.length || !status) return res.status(400).json({ message: 'ids and status are required' });
 
-    const { clerkClient } = require('@clerk/express');
-    const clerkUser = await clerkClient.users.getUser(getAuthUserId(req));
-    const isAdmin   = clerkUser.publicMetadata?.role === 'admin';
+    const authUser = await auth.getUser(auth.getUserId(req));
+    const isAdmin   = authUser.role === 'admin';
 
     if (!isAdmin) {
       const allowed = ['Rented', 'Pending Return'];
       if (!allowed.includes(status)) {
         return res.status(403).json({ message: 'Not authorised for this status transition' });
       }
-      const owned = await Asset.find({ _id: { $in: ids }, rentedByUserId: getAuthUserId(req) });
+      const owned = await Asset.find({ _id: { $in: ids }, rentedByUserId: auth.getUserId(req) });
       if (owned.length !== ids.length) {
         return res.status(403).json({ message: 'You can only update your own assets' });
       }
@@ -128,7 +113,7 @@ const requestRental = async (req, res) => {
       }
       for (const asset of available) {
         asset.status         = 'Pending Rental';
-        asset.rentedByUserId = getAuthUserId(req);
+        asset.rentedByUserId = auth.getUserId(req);
         asset.returnDate     = returnDate;
         await asset.save();
         updatedAssets.push(asset);

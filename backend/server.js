@@ -3,9 +3,9 @@
  * Express application entry point.
  *
  * Middleware pipeline (in order):
- *   1. clerkMiddleware — attaches Clerk auth context to every request
- *   2. cors            — allows cross-origin requests (configured for dev; tighten in production)
- *   3. express.json    — parses JSON request bodies
+ *   1. auth.contextMiddleware() — attaches auth context to every request
+ *   2. cors                   — allows cross-origin requests (configured for dev; tighten in production)
+ *   3. express.json           — parses JSON request bodies
  *
  * The `require.main === module` guard means the server only starts listening
  * when run directly (e.g. `node server.js`), not when imported by tests.
@@ -16,11 +16,11 @@ require('dotenv').config(); // must be first so env vars are available to all mo
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const { clerkMiddleware } = require('@clerk/express');
+const auth = require('./services/auth/ClerkAuthAdapter');
 
 const app = express();
 
-app.use(clerkMiddleware());
+app.use(auth.contextMiddleware());
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth',   require('./routes/authRoutes'));
