@@ -65,20 +65,29 @@ const OverviewTab = ({ assets, assetTypes, productGroups }: AdminTabProps) => {
                 return (
                   <div
                     key={type.id}
-                    className="card p-6 flex items-center justify-between"
+                    className="card relative overflow-hidden flex items-center group h-24"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <ThumbnailImage
-                        thumbnailUrl={type.thumbnailUrl}
-                        imageUrl={type.imageUrl}
-                        onClick={() => setLightboxUrl(type.imageUrl ?? null)}
-                      />
-                      <div>
-                        <p className="text-text-muted text-sm font-medium mb-1">{type.name}</p>
-                        <p className="text-3xl font-bold text-brand-light">{count}</p>
+                    {/* Left side: Square Image */}
+                    {type.imageUrl && (
+                      <div className="aspect-square h-full shrink-0">
+                        <img 
+                          src={type.imageUrl} 
+                          alt="" 
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={() => setLightboxUrl(type.imageUrl ?? null)}
+                        />
                       </div>
+                    )}
+
+                    {/* Right side: Content */}
+                    <div className="flex-1 px-4 min-w-0 h-full relative flex flex-col items-end">
+                      <p className="absolute top-4 right-4 text-text-primary text-sm font-semibold text-right line-clamp-2 leading-tight">
+                        {type.name}
+                      </p>
+                      <p className="absolute bottom-4 right-4 text-2xl font-bold text-brand-light">
+                        {count}
+                      </p>
                     </div>
-                    <Package size={32} className="text-text-subtle opacity-40 shrink-0" />
                   </div>
                 );
               })}
