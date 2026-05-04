@@ -21,7 +21,8 @@ const auth = require('../services/auth/ClerkAuthAdapter');
 const {
   listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus, requestRental, resetSeedAssets,
 } = require('../controllers/assetController');
-const { uploadPhoto, deletePhoto, updateEntity } = require('../controllers/photoController');
+const { uploadPhoto, deletePhoto } = require('../controllers/photoController');
+const { updateEntity }             = require('../controllers/entityController');
 const { upload, validateFileType   } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();

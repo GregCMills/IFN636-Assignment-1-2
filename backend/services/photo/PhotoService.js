@@ -3,9 +3,9 @@
  * Facade pattern — provides a simplified interface for all photo operations.
  *
  * Hides the complexity of storage strategies, image processing, and entity
- * handlers behind three clean methods.  Controllers only need to call
- * uploadPhoto() and deletePhoto() — they know nothing about sharp, multer
- * buffers, or filesystem paths.
+ * handlers behind three clean methods: uploadPhoto(), deletePhoto(), and
+ * getPhotoUrl().  Controllers know nothing about sharp, multer buffers, or
+ * filesystem paths.
  *
  * ## Singleton
  * Exported as `new PhotoService()` so all modules share the same instance
@@ -99,23 +99,6 @@ class PhotoService {
     return { imageUrl: paths.imageUrl, thumbnailUrl: paths.thumbnailUrl };
   }
 
-  /**
-   * Partially updates an entity's name and/or description.
-   *
-   * Uses the Factory Method pattern to get the right handler for the entity
-   * type, then delegates to handler.updateEntity().
-   *
-   * @param {'group'|'type'|'asset'} entityType
-   * @param {string} entityId - MongoDB ObjectId as a string
-   * @param {object} updates   - { name?: string, description?: string }
-   * @returns {Promise<object|null>} The updated document as JSON, or null if not found
-   */
-  async updateEntity(entityType, entityId, updates) {
-    const handler = PhotoHandlerFactory.create(entityType);
-    const doc = await handler.updateEntity(entityId, updates);
-    if (!doc) return null;
-    return doc.toJSON();
-  }
 }
 
 module.exports = new PhotoService();

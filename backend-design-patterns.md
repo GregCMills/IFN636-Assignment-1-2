@@ -179,25 +179,36 @@ format.
 
 #### 2c. Photo service (`services/photo/PhotoService.js`)
 
-The `PhotoService` is a facade over the entire photo subsystem. It exposes four
-methods — `uploadPhoto()`, `deletePhoto()`, `getPhotoUrl()`, and `updateEntity()` — and hides behind
-them the complexity of:
+The `PhotoService` is a facade over the photo subsystem. It exposes three
+methods — `uploadPhoto()`, `deletePhoto()`, and `getPhotoUrl()` — and hides
+behind them the complexity of:
 
 - **Storage strategy** — file system operations (save/delete/getUrl)
 - **Image processing** — resizing and thumbnail generation via `sharp`
-- **Entity handlers** — Mongoose model queries for each entity type
+- **Entity handlers** — Mongoose model queries for photo URLs per entity type
 
-Controllers call `photoService.uploadPhoto('group', id, req.file)` or
-`photoService.updateEntity('group', id, { name, description })` without
-knowing how files are stored, how images are processed, which Mongoose model
-is being updated, or how entity name/description updates are routed to the
-correct handler.
+Controllers call `photoService.uploadPhoto('group', id, req.file)` without
+knowing how files are stored, how images are processed, or which Mongoose
+model is being updated.
+
+#### 2d. Entity service (`services/entity/EntityService.js`)
+
+The `EntityService` is a facade over entity data mutations. It exposes a
+single method — `updateEntity()` — and hides behind it the complexity of:
+
+- **Model resolution** — mapping entity type strings to Mongoose models
+- **Partial updates** — only modifying fields present in the request
+
+Controllers call `entityService.updateEntity('group', id, { name, description })`
+without knowing which Mongoose model is being queried or how the update is
+persisted.
 
 ### Evaluation
 
-Confirmed. Three independent facades coexist: `server.js` (infrastructure),
-`enrichWithClerkUsers` (user data), and `PhotoService` (photo operations). Each
-hides a different subsystem behind a simple interface.
+Confirmed. Four independent facades coexist: `server.js` (infrastructure),
+`enrichWithClerkUsers` (user data), `PhotoService` (photo operations), and
+`EntityService` (entity data mutations). Each hides a different subsystem
+behind a simple interface.
 
 ---
 
@@ -586,10 +597,8 @@ skip for leaves) and call the primitive operations `getChildren()` and
 | `AssetTypeComponent` | `AssetType.findByIdAndDelete(this.doc._id)` |
 | `AssetComponent` | `Asset.findByIdAndDelete(this.doc._id)` |
 
-The three subclasses previously each had ~30 lines of duplicated `getPhotoPaths()`
-and `delete()` code. The Template Method refactor eliminated that duplication by
-moving the common algorithm into the base class, leaving each subclass with only
-~6 lines of unique code (constructor + accessors + `_deleteSelf()`).
+Each subclass has only ~6 lines of unique code (constructor + accessors +
+`_deleteSelf()`). The common algorithm lives in the base class.
 
 Similarly, `getChildren()` returns an empty array by default, so `AssetComponent`
 (the leaf) inherits the full Template Method behaviour without overriding
@@ -979,7 +988,6 @@ class EntityPhotoHandler {
   async updatePhoto(id, imageUrl, thumbnailUrl) { /* ... */ }
   async getPhotoPaths(id) { /* ... */ }
   async deleteEntityPhotoFiles(id, storageStrategy) { /* ... */ }
-  async updateEntity(id, updates) { /* finds doc, applies partial update, saves */ }
 }
 ```
 
@@ -1013,7 +1021,6 @@ interface without knowing which concrete handler it received:
 const handler = PhotoHandlerFactory.create(entityType);
 await handler.deleteEntityPhotoFiles(entityId, this.storageStrategy);
 await handler.updatePhoto(entityId, imageUrl, thumbnailUrl);
-await handler.updateEntity(entityId, { name, description });
 ```
 
 ### Factory Method structure
@@ -1025,14 +1032,6 @@ This satisfies all three textbook requirements:
    query logic.
 3. Client code (`PhotoService`) works with products through the base interface,
    not knowing which concrete class it received.
-
-### Why this upgrades Factory Method from Partial to Confirmed
-
-The previous analysis (§10 in the original report) noted that the codebase had
-no creator subclasses or polymorphic product interfaces — it was rated Partial.
-The photo handlers introduce all three canonical Factory Method elements:
-creator base class, concrete subclasses with varying behaviour, and a factory
-that selects the right subclass at runtime.
 
 ---
 
@@ -1154,8 +1153,7 @@ Strategy in a single request flow without any pattern fighting for control.
 
 ### PhotoService — multiple patterns in every operation
 
-A single `uploadPhoto()` call coordinates five patterns; a single `updateEntity()`
-call coordinates three:
+A single `uploadPhoto()` call coordinates five patterns:
 
 ```mermaid
 flowchart TD
@@ -1166,10 +1164,9 @@ flowchart TD
     Facade -->|"save(dir, name, buf)"| Strategy[LocalStorageStrategy Strategy]
     Factory -->|returns| Handler[EntityPhotoHandler]
     Handler -->|"updatePhoto(id, url)"| Model[Mongoose Model]
-    Handler -->|"updateEntity(id, updates)"| Model
 ```
 
-1. **Facade** — `PhotoService` presents a simple 4-method interface.
+1. **Facade** — `PhotoService` presents a simple 3-method interface.
 2. **Factory Method** — `PhotoHandlerFactory.create()` returns the right handler.
 3. **Builder** — `ProcessedPhotoBuilder` constructs the processed image step by
    step, orchestrated by `PhotoProcessingDirector` (Director).
@@ -1177,9 +1174,10 @@ flowchart TD
 5. **Singleton** — `PhotoService` is a singleton; all modules share one storage
    strategy instance.
 
-The `updateEntity()` method employs the Facade and Factory Method patterns
-without needing the Builder or Strategy — it simply routes partial updates
-through the factory-selected handler to the correct Mongoose model.
+The `EntityService.updateEntity()` method is an independent Facade that
+handles entity data mutations (name, description) through a simple model map.
+It does not use the Builder or Strategy patterns — it only needs
+`findById` + `save()`.
 
 ### Composite + Strategy — cascading photo cleanup
 
@@ -1199,13 +1197,14 @@ filesystem paths, S3 buckets, or Cloudinary URLs — it calls
 | Adapter | 20 dedicated unit tests (`test/adapter.test.js`). Correctly handles Clerk v1 and v2 request shapes, normalises user objects, and degrades gracefully on API failures. |
 | Composite | 14 dedicated integration tests (`test/composite.test.js`). Template Method refactor eliminated ~50 lines of duplicated code; all 14 tests pass unchanged. Cascading photo deletion verified by integration tests. |
 | Singleton | Verified by Node.js module caching — `require()` returns the same object. PhotoService follows the same pattern as ClerkAuthAdapter. |
-| Facade | `server.js` (infrastructure), `enrichWithClerkUsers` (user data), and `PhotoService` (photo operations) — three independent facades. `PhotoService` verified by integration tests. |
+| Facade | `server.js` (infrastructure), `enrichWithClerkUsers` (user data), `PhotoService` (photo operations), and `EntityService` (entity data mutations) — four independent facades. Verified by integration tests. |
 | Decorator | Middleware stack verified by route-level integration tests. |
 | Chain of Responsibility | Middleware chain verified by auth integration tests (401/403 responses). Upload validation chain (multer + validateFileType) verified by photo tests (400 for invalid file types). |
 | Template Method | Verified by State pattern unit tests and Composite integration tests. |
-| Factory Method | PhotoHandlerFactory.create() returns the correct handler subclass for each entity type. Verified by integration tests via PhotoService. `updateEntity()` added to the base class extends the pattern — all three subclasses inherit it without changes. |
+| Factory Method | PhotoHandlerFactory.create() returns the correct handler subclass for each entity type. Verified by integration tests via PhotoService. |
 | Builder | ProcessedPhotoBuilder and PhotoProcessingDirector verified by photo integration tests (correct resize + thumbnail dimensions). |
-| Controller | `photoController.js` exports `updateEntity` as a higher-order function following the same factory pattern as `uploadPhoto` and `deletePhoto`. 12 dedicated integration tests cover all PATCH scenarios (200, 400, 404, 401, 403 for groups, types, and assets). |
+| EntityService | `EntityService.updateEntity()` verified by the same 12 PATCH integration tests in `test/photo.test.js`. Uses a plain model map instead of the handler hierarchy. |
+| Controller | `photoController.js` exports `uploadPhoto` and `deletePhoto` as higher-order functions. `entityController.js` exports `updateEntity` following the same factory pattern. 12 dedicated integration tests cover all PATCH scenarios (200, 400, 404, 401, 403 for groups, types, and assets). |
 
 ---
 

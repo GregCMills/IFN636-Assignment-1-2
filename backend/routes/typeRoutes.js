@@ -13,7 +13,8 @@
 const express = require('express');
 const auth = require('../services/auth/ClerkAuthAdapter');
 const { listTypes, createType, deleteType } = require('../controllers/typeController');
-const { uploadPhoto, deletePhoto, updateEntity } = require('../controllers/photoController');
+const { uploadPhoto, deletePhoto } = require('../controllers/photoController');
+const { updateEntity }             = require('../controllers/entityController');
 const { upload, validateFileType   } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
