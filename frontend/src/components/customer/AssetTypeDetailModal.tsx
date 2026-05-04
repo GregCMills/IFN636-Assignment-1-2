@@ -43,7 +43,7 @@ const AssetTypeDetailModal = ({
         </button>
 
         {/* ── Top side: Full image ─────────────────────────────── */}
-        <div className="relative w-full h-1/2 bg-surface-elevated flex items-center justify-center overflow-hidden border-b border-border-default/50">
+        <div className="relative w-full flex-1 bg-surface-elevated flex items-center justify-center overflow-hidden border-b border-border-default/50">
           {/* Mesh gradient background */}
           <div className="absolute inset-0 opacity-40 pointer-events-none">
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand/20 blur-[100px] rounded-full" />
@@ -69,7 +69,7 @@ const AssetTypeDetailModal = ({
         </div>
 
         {/* ── Bottom side: Info ──────────────────────────────────── */}
-        <div className="flex-1 p-4 md:p-6 flex flex-col overflow-y-auto">
+        <div className="shrink-0 p-4 md:p-6 flex flex-col">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div>

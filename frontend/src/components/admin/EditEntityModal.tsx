@@ -93,7 +93,7 @@ const EditEntityModal = ({
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-surface-raised border border-border-default w-full max-w-3xl max-h-[calc(100vh-2rem)] rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
+      <div className="bg-surface-raised border border-border-default w-full max-w-4xl h-[85vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
         <button
           onClick={onClose}
           disabled={busy}
@@ -102,8 +102,8 @@ const EditEntityModal = ({
           <X size={18} />
         </button>
 
-        {/* ── Left side: Full image ─────────────────────────────── */}
-        <div className="relative w-full md:w-5/12 bg-surface-elevated flex items-center justify-center group overflow-hidden border-r border-border-default/50 min-h-[260px] md:min-h-0">
+        {/* ── Top side: Full image ─────────────────────────────── */}
+        <div className="relative w-full flex-1 bg-surface-elevated flex items-center justify-center group overflow-hidden border-b border-border-default/50">
 
           {/* Mesh gradient background */}
           <div className="absolute inset-0 opacity-40 pointer-events-none">
@@ -119,7 +119,7 @@ const EditEntityModal = ({
               <img
                 src={entity.imageUrl}
                 alt={entity.name}
-                className="absolute inset-0 z-[1] w-full h-full object-contain p-4"
+                className="absolute inset-0 z-[1] w-full h-full object-cover"
               />
               {/* Hover overlay */}
               <div className="absolute inset-0 z-[3] bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-5">
@@ -165,8 +165,8 @@ const EditEntityModal = ({
           </div>
         </div>
 
-        {/* ── Right side: Form ──────────────────────────────────── */}
-        <div className="flex-1 p-4 md:p-4 flex flex-col relative">
+        {/* ── Bottom side: Form ──────────────────────────────────── */}
+        <div className="shrink-0 p-4 md:p-6 flex flex-col">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div>
@@ -234,7 +234,7 @@ const EditEntityModal = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 mt-4 pt-2">
+          <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border-default/50">
             <button
               onClick={onClose}
               disabled={busy}

@@ -3,8 +3,6 @@ import { Package, SlidersHorizontal } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import type { AssetStatus } from '../../../types/assets';
 import EmptyState from '../../ui/EmptyState';
-import ThumbnailImage from '../../ui/ThumbnailImage';
-import ImageLightbox from '../../ui/ImageLightbox';
 
 /** All valid status values — drives both the filter dropdown and the count query. */
 const ALL_STATUSES: AssetStatus[] = [
@@ -22,7 +20,6 @@ const ALL_STATUSES: AssetStatus[] = [
  */
 const OverviewTab = ({ assets, assetTypes, productGroups }: AdminTabProps) => {
   const [statusFilter, setStatusFilter] = useState<AssetStatus>('Available');
-  const [lightboxUrl,   setLightboxUrl]  = useState<string | null>(null);
 
   /**
    * Counts how many assets of a given type currently match the selected status filter.
@@ -67,19 +64,7 @@ const OverviewTab = ({ assets, assetTypes, productGroups }: AdminTabProps) => {
                     key={type.id}
                     className="card relative overflow-hidden flex items-center group h-24"
                   >
-                    {/* Left side: Square Image */}
-                    {type.imageUrl && (
-                      <div className="aspect-square h-full shrink-0">
-                        <img 
-                          src={type.imageUrl} 
-                          alt="" 
-                          className="w-full h-full object-cover cursor-pointer"
-                          onClick={() => setLightboxUrl(type.imageUrl ?? null)}
-                        />
-                      </div>
-                    )}
-
-                    {/* Right side: Content */}
+                    {/* Content */}
                     <div className="flex-1 px-4 min-w-0 h-full relative flex flex-col items-end">
                       <p className="absolute top-4 right-4 text-text-primary text-sm font-semibold text-right line-clamp-2 leading-tight">
                         {type.name}
@@ -105,7 +90,6 @@ const OverviewTab = ({ assets, assetTypes, productGroups }: AdminTabProps) => {
         />
       )}
 
-      <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   );
 };
