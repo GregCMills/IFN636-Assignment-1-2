@@ -60,7 +60,7 @@ describe('BrowseTab — catalogue', () => {
     render(<BrowseTab {...makeProps()} />);
     expect(screen.getByText('2 available')).toBeInTheDocument(); // MacBook
     expect(screen.getByText('1 available')).toBeInTheDocument(); // Sony
-    expect(screen.getByText('None available')).toBeInTheDocument(); // Dell
+    expect(screen.getByText('None left')).toBeInTheDocument(); // Dell
   });
 
   it('hides a group heading when the group has no asset types', () => {
@@ -99,7 +99,8 @@ describe('BrowseTab — cart controls', () => {
     const user = userEvent.setup();
     render(<BrowseTab {...makeProps()} />);
     await user.click(screen.getByRole('button', { name: /add one macbook air/i }));
-    expect(screen.getByText('1 in cart')).toBeInTheDocument();
+    // The badge on the card should show '1'
+    expect(screen.getByText('1', { selector: '.animate-in' })).toBeInTheDocument();
   });
 
   it('clicking + multiple times up to the available count then disables the button', async () => {
@@ -117,10 +118,10 @@ describe('BrowseTab — cart controls', () => {
     const addBtn = screen.getByRole('button', { name: /add one macbook air/i });
     await user.click(addBtn);
     await user.click(addBtn);
-    expect(screen.getByText('2 in cart')).toBeInTheDocument();
+    expect(screen.getByText('2', { selector: '.animate-in' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /remove one macbook air/i }));
-    expect(screen.getByText('1 in cart')).toBeInTheDocument();
+    expect(screen.getByText('1', { selector: '.animate-in' })).toBeInTheDocument();
   });
 
   it('hides the "in cart" label when the quantity is decremented back to 0', async () => {

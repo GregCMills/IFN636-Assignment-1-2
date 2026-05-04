@@ -86,7 +86,7 @@ describe('AssetManagementTab — edit buttons', () => {
     render(<AssetManagementTab {...makeProps()} />);
     const groupEditBtn = screen.getAllByTitle('Edit group')[0];
     fireEvent.click(groupEditBtn);
-    const input = screen.getByPlaceholderText('Product Group name') as HTMLInputElement;
+    const input = screen.getByPlaceholderText(/e\.g\./) as HTMLInputElement;
     expect(input.value).toBe('Laptops');
   });
 
