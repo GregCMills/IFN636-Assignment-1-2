@@ -84,42 +84,55 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
                   const available = availableCounts[type.id] ?? 0;
                   const inCart    = cart[type.id] ?? 0;
                   return (
-                    <div key={type.id} className="card p-5 flex flex-col gap-3">
-                      <div className="flex items-start gap-3">
-                        <ThumbnailImage
-                          thumbnailUrl={type.thumbnailUrl}
-                          imageUrl={type.imageUrl}
-                          onClick={() => setLightboxUrl(type.imageUrl ?? null)}
-                          className="mt-0.5"
-                        />
-                        <div>
-                          <h3 className="text-base font-bold text-text-secondary">{type.name}</h3>
-                          <p className={`text-sm mt-0.5 ${available > 0 ? 'text-status-success' : 'text-text-subtle'}`}>
+                    <div key={type.id} className="card relative overflow-hidden flex group h-32">
+                      {/* Left side: Image with Fade */}
+                      {type.imageUrl && (
+                        <div className="absolute inset-0 z-0 flex">
+                          <div className="aspect-square h-full shrink-0 relative">
+                            <img 
+                              src={type.imageUrl} 
+                              alt="" 
+                              className="w-full h-full object-cover cursor-pointer"
+                              onClick={() => setLightboxUrl(type.imageUrl ?? null)}
+                            />
+                            {/* Fade overlay - tightened further to show even more product */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent from-70% via-transparent to-surface-raised" />
+                          </div>
+                          <div className="flex-1 bg-surface-raised" />
+                        </div>
+                      )}
+
+                      {/* Right side: Content */}
+                      <div className="relative z-10 flex-1 p-2 min-w-0 flex flex-col justify-between ml-[33.333%] items-end text-right">
+                        <h3 className="text-base font-bold text-text-secondary line-clamp-2 leading-tight">{type.name}</h3>
+
+                        <div className="flex flex-col items-end gap-1">
+                          <p className={`text-sm ${available > 0 ? 'text-status-success' : 'text-text-subtle'}`}>
                             {available > 0 ? `${available} available` : 'None available'}
                           </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-brand-light">
-                          {inCart > 0 ? `${inCart} in cart` : ''}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => removeFromCart(type.id)}
-                            disabled={inCart === 0}
-                            className="w-8 h-8 flex items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-secondary hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
-                            aria-label={`Remove one ${type.name} from cart`}
-                          >
-                            −
-                          </button>
-                          <button
-                            onClick={() => addToCart(type.id)}
-                            disabled={available === 0 || inCart >= available}
-                            className="w-8 h-8 flex items-center justify-center rounded border border-brand/40 bg-brand-dim text-brand-subtle hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
-                            aria-label={`Add one ${type.name} to cart`}
-                          >
-                            +
-                          </button>
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm font-medium text-brand-light">
+                              {inCart > 0 ? `${inCart} in cart` : ''}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => removeFromCart(type.id)}
+                                disabled={inCart === 0}
+                                className="w-8 h-8 flex items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-secondary hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
+                                aria-label={`Remove one ${type.name} from cart`}
+                              >
+                                −
+                              </button>
+                              <button
+                                onClick={() => addToCart(type.id)}
+                                disabled={available === 0 || inCart >= available}
+                                className="w-8 h-8 flex items-center justify-center rounded border border-brand/40 bg-brand-dim text-brand-subtle hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
+                                aria-label={`Add one ${type.name} to cart`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
