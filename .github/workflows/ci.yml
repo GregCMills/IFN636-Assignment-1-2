@@ -29,6 +29,10 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      - name: Typecheck Backend
+        working-directory: ./backend
+        run: npm run typecheck
+
       - name: Run Backend Tests
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
@@ -66,6 +70,10 @@ jobs:
       - name: Install Backend Dependencies
         working-directory: ./backend
         run: npm ci
+
+      - name: Build Backend
+        working-directory: ./backend
+        run: npm run build
 
       - name: Install Frontend Dependencies and Build
         working-directory: ./frontend
@@ -134,8 +142,8 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            # Install dependencies and build frontend
-            cd backend && npm ci
+            # Install dependencies and build backend + frontend
+            cd backend && npm ci && npm run build
             cd ../frontend
             VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }} npm ci
             VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }} npm run build
