@@ -1,6 +1,21 @@
+/**
+ * @module assetRoutes
+ * Routes for managing Assets (individual equipment units).
+ * Read access requires authentication; write/delete/batch operations are
+ * restricted to admins.  Status transitions (bulk-status, request-rental)
+ * have additional role-based rules enforced in the controller.
+ *
+ *   GET    /api/assets              — list all assets with user enrichment
+ *   POST   /api/assets              — create a single asset (admin)
+ *   POST   /api/assets/batch        — create multiple assets at once (admin)
+ *   PATCH  /api/assets/bulk-status  — update status for one or more assets
+ *   POST   /api/assets/request-rental — request rental (authenticated users)
+ *   POST   /api/assets/reset-seed   — wipe and re-seed all data (admin)
+ *   DELETE /api/assets/:id          — delete an asset (admin)
+ */
+
 const express = require('express');
-const { protect }   = require('../middleware/authMiddleware');
-const { adminOnly } = require('../middleware/adminMiddleware');
+const auth = require('../services/auth/ClerkAuthAdapter');
 const {
   listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus, requestRental, resetSeedAssets,
 } = require('../controllers/assetController');
@@ -8,12 +23,12 @@ const {
 const router = express.Router();
 
 // Note: specific paths must come before /:id
-router.get('/',                 protect,            listAssets);
-router.post('/',                protect, adminOnly, createAsset);
-router.post('/batch',           protect, adminOnly, batchCreateAssets);
-router.patch('/bulk-status',    protect,            bulkUpdateStatus);
-router.post('/request-rental',  protect,            requestRental);
-router.post('/reset-seed',      protect, adminOnly, resetSeedAssets);
-router.delete('/:id',           protect, adminOnly, deleteAsset);
+router.get('/',                 auth.requireAuth(),              listAssets);
+router.post('/',                auth.requireAuth(), auth.adminOnly(), createAsset);
+router.post('/batch',           auth.requireAuth(), auth.adminOnly(), batchCreateAssets);
+router.patch('/bulk-status',    auth.requireAuth(),              bulkUpdateStatus);
+router.post('/request-rental',  auth.requireAuth(),              requestRental);
+router.post('/reset-seed',      auth.requireAuth(), auth.adminOnly(), resetSeedAssets);
+router.delete('/:id',           auth.requireAuth(), auth.adminOnly(), deleteAsset);
 
 module.exports = router;

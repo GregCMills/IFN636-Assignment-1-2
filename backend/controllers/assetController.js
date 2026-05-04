@@ -1,9 +1,14 @@
 const Asset = require('../models/Asset');
 const { SEED_GROUPS, SEED_TYPES, SEED_ASSETS } = require('../data/seedData');
+const auth = require('../services/auth/ClerkAuthAdapter');
+const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
+const AssetStateMachine = require('../services/asset-states/AssetStateMachine');
+const { AdminAuthoriser, CustomerAuthoriser } = require('../services/asset-states/TransitionAuthoriser');
+const { ValidationError, NotFoundError, AuthorisationError, AppError } = require('../services/errors/AppError');
 
-/** Clerk v2 exposes req.auth as a function; v1 / test stubs expose it as a plain object. */
-const getAuthUserId = (req) =>
-  typeof req.auth === 'function' ? req.auth()?.userId : req.auth?.userId;
+// Destructure status constants for readability and to eliminate hardcoded strings
+// The order must match Asset.STATUSES: ['Available','Rented','Pending Rental','Pending Return','Maintenance']
+const [AVAILABLE, RENTED, PENDING_RENTAL, PENDING_RETURN, MAINTENANCE] = Asset.STATUSES;
 
 /**
  * Enriches an array of Mongoose Asset documents with Clerk user name / email.
@@ -17,18 +22,7 @@ const enrichWithClerkUsers = async (assets) => {
 
   let userMap = {};
   if (uniqueUserIds.length > 0) {
-    const { clerkClient } = require('@clerk/express');
-    try {
-      const { data: clerkUsers } = await clerkClient.users.getUserList({ userId: uniqueUserIds });
-      clerkUsers.forEach(u => {
-        userMap[u.id] = {
-          email: u.emailAddresses[0]?.emailAddress ?? '',
-          name:  [u.firstName, u.lastName].filter(Boolean).join(' ') || null,
-        };
-      });
-    } catch {
-      // Clerk unavailable — return assets without enrichment rather than failing
-    }
+    userMap = await auth.getUsers(uniqueUserIds);
   }
 
   return assets.map(a => {
@@ -43,70 +37,99 @@ const enrichWithClerkUsers = async (assets) => {
 };
 
 const listAssets = async (req, res) => {
-  try {
-    const assets = await Asset.find().sort({ name: 1 });
-    res.json(await enrichWithClerkUsers(assets));
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const assets = await Asset.find().sort({ name: 1 });
+  res.json(await enrichWithClerkUsers(assets));
 };
 
 const createAsset = async (req, res) => {
-  try {
-    const { typeId, name } = req.body;
-    if (!typeId || !name?.trim()) return res.status(400).json({ message: 'typeId and name are required' });
-    const asset = await Asset.create({ typeId, name: name.trim(), status: 'Available' });
-    res.status(201).json(asset);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const { typeId, name } = req.body;
+  if (!typeId || !name?.trim()) throw new ValidationError('typeId and name are required');
+  const asset = await Asset.create({ typeId, name: name.trim(), status: AVAILABLE });
+  res.status(201).json(asset);
 };
 
+/**
+ * DELETE /api/assets/:id
+ * Builds a leaf node via InventoryTreeBuilder, then calls delete() to
+ * remove the asset from the database. Passes null as the storageStrategy
+ * so photo file deletion is skipped (placeholder for the future photo plan).
+ *
+ * @param {import('express').Request}  req - params: { id: string }
+ * @param {import('express').Response} res - { success: true } or 404 if not found
+ */
 const deleteAsset = async (req, res) => {
-  try {
-    await Asset.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const root = await InventoryTreeBuilder.fromAssetId(req.params.id);
+  if (!root) throw new NotFoundError('Asset not found');
+  await root.delete(null);
+  res.json({ success: true });
 };
 
 /**
  * PATCH /api/assets/bulk-status
  * Body: { ids: string[], status: string, clearRentalData?: boolean }
- * Admins can set any status. Customers may only transition Rented ↔ Pending Return
- * on assets they own.
+ *
+ * Uses the AssetStateMachine (State pattern) to validate that every
+ * requested transition is structurally valid for the asset's current
+ * status, then uses the TransitionAuthoriser (Strategy pattern) to
+ * check whether the user's role permits the transition.
+ *
+ * Two-phase validation:
+ * 1. State machine checks structural validity (e.g. Available → Rented is invalid)
+ * 2. Authoriser checks role permissions (e.g. customer cannot set Maintenance)
+ *
+ * Admins can perform any structurally valid transition.
+ * Customers may only transition Rented ↔ Pending Return on their own assets.
  */
 const bulkUpdateStatus = async (req, res) => {
-  try {
-    const { ids, status, clearRentalData } = req.body;
-    if (!ids?.length || !status) return res.status(400).json({ message: 'ids and status are required' });
+  const { ids, status, clearRentalData } = req.body;
+  if (!ids?.length || !status) throw new ValidationError('ids and status are required');
 
-    const { clerkClient } = require('@clerk/express');
-    const clerkUser = await clerkClient.users.getUser(getAuthUserId(req));
-    const isAdmin   = clerkUser.publicMetadata?.role === 'admin';
+  // Fetch assets before updating so we can validate against current statuses
+  const assets = await Asset.find({ _id: { $in: ids } });
 
-    if (!isAdmin) {
-      const allowed = ['Rented', 'Pending Return'];
-      if (!allowed.includes(status)) {
-        return res.status(403).json({ message: 'Not authorised for this status transition' });
-      }
-      const owned = await Asset.find({ _id: { $in: ids }, rentedByUserId: getAuthUserId(req) });
-      if (owned.length !== ids.length) {
-        return res.status(403).json({ message: 'You can only update your own assets' });
-      }
+  // Determine the user's role and select the appropriate authoriser strategy
+  const authUser = await auth.getUser(auth.getUserId(req));
+  const isAdmin   = authUser.role === 'admin';
+  const authoriser = isAdmin ? new AdminAuthoriser() : new CustomerAuthoriser();
+
+  // Validate each asset's transition before making any changes
+  for (const asset of assets) {
+    const machine = new AssetStateMachine(asset.status);
+
+    // Phase 1 & 2: structural + authorisational validation
+    if (!machine.canTransitionTo(status, authoriser)) {
+      throw new AuthorisationError(
+        `Not authorised to transition "${asset.name}" from ${asset.status} to ${status}`
+      );
     }
 
-    const update = clearRentalData
-      ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
-      : { status };
-
-    await Asset.updateMany({ _id: { $in: ids } }, update);
-    const updated = await Asset.find({ _id: { $in: ids } });
-    res.json(await enrichWithClerkUsers(updated));
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    // Ownership check — delegated to the authoriser strategy
+    if (!authoriser.verifyOwnership(asset, auth.getUserId(req))) {
+      throw new AuthorisationError('You can only update your own assets');
+    }
   }
+
+  // Determine whether to clear rental data.  Use the state machine's
+  // shouldClearRentalData() as the default.  The explicit clearRentalData
+  // flag in the request body can override it (force-clear or force-preserve).
+  let shouldClear;
+  if (clearRentalData !== undefined) {
+    // Client explicitly specified — use their value
+    shouldClear = clearRentalData === true;
+  } else {
+    // No client preference — ask the first asset's state machine.
+    // All assets share the same transition so any machine gives the same answer.
+    const machine = new AssetStateMachine(assets[0].status);
+    shouldClear = machine.shouldClearRentalData(status);
+  }
+
+  const update = shouldClear
+    ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
+    : { status };
+
+  await Asset.updateMany({ _id: { $in: ids } }, update);
+  const updated = await Asset.find({ _id: { $in: ids } });
+  res.json(await enrichWithClerkUsers(updated));
 };
 
 /**
@@ -115,30 +138,26 @@ const bulkUpdateStatus = async (req, res) => {
  * Marks available units as 'Pending Rental' for the authenticated user.
  */
 const requestRental = async (req, res) => {
-  try {
-    const { items, returnDate } = req.body;
-    if (!items?.length || !returnDate) return res.status(400).json({ message: 'items and returnDate are required' });
+  const { items, returnDate } = req.body;
+  if (!items?.length || !returnDate) throw new ValidationError('items and returnDate are required');
 
-    const updatedAssets = [];
+  const updatedAssets = [];
 
-    for (const { typeId, quantity } of items) {
-      const available = await Asset.find({ typeId, status: 'Available' }).limit(quantity);
-      if (available.length < quantity) {
-        return res.status(409).json({ message: `Not enough units available` });
-      }
-      for (const asset of available) {
-        asset.status         = 'Pending Rental';
-        asset.rentedByUserId = getAuthUserId(req);
-        asset.returnDate     = returnDate;
-        await asset.save();
-        updatedAssets.push(asset);
-      }
+  for (const { typeId, quantity } of items) {
+    const available = await Asset.find({ typeId, status: AVAILABLE }).limit(quantity);
+    if (available.length < quantity) {
+      throw new AppError('Not enough units available', 409);
     }
-
-    res.json(updatedAssets);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    for (const asset of available) {
+      asset.status         = PENDING_RENTAL;
+      asset.rentedByUserId = auth.getUserId(req);
+      asset.returnDate     = returnDate;
+      await asset.save();
+      updatedAssets.push(asset);
+    }
   }
+
+  res.json(updatedAssets);
 };
 
 /**
@@ -147,17 +166,13 @@ const requestRental = async (req, res) => {
  * Creates all units in a single insertMany call and returns the created documents.
  */
 const batchCreateAssets = async (req, res) => {
-  try {
-    const { typeId, names } = req.body;
-    if (!typeId || !Array.isArray(names) || names.length === 0) {
-      return res.status(400).json({ message: 'typeId and a non-empty names array are required' });
-    }
-    const docs    = names.map(name => ({ typeId, name: name.trim(), status: 'Available' }));
-    const created = await Asset.insertMany(docs);
-    res.status(201).json(created);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  const { typeId, names } = req.body;
+  if (!typeId || !Array.isArray(names) || names.length === 0) {
+    throw new ValidationError('typeId and a non-empty names array are required');
   }
+  const docs    = names.map(name => ({ typeId, name: name.trim(), status: AVAILABLE }));
+  const created = await Asset.insertMany(docs);
+  res.status(201).json(created);
 };
 
 /**
@@ -166,45 +181,41 @@ const batchCreateAssets = async (req, res) => {
  * everything from the standard seed set so the type-name lookup always succeeds.
  */
 const resetSeedAssets = async (req, res) => {
-  try {
-    const ProductGroup = require('../models/ProductGroup');
-    const AssetType    = require('../models/AssetType');
+  const ProductGroup = require('../models/ProductGroup');
+  const AssetType    = require('../models/AssetType');
 
-    // Wipe all three collections
-    await Asset.deleteMany({});
-    await AssetType.deleteMany({});
-    await ProductGroup.deleteMany({});
+  // Wipe all three collections
+  await Asset.deleteMany({});
+  await AssetType.deleteMany({});
+  await ProductGroup.deleteMany({});
 
-    // Re-create groups and build name→id map
-    const createdGroups = await ProductGroup.insertMany(SEED_GROUPS);
-    const groupNameToId = {};
-    createdGroups.forEach(g => { groupNameToId[g.name] = g._id; });
+  // Re-create groups and build name→id map
+  const createdGroups = await ProductGroup.insertMany(SEED_GROUPS);
+  const groupNameToId = {};
+  createdGroups.forEach(g => { groupNameToId[g.name] = g._id; });
 
-    // Re-create types and build name→id map
-    const typeDocs = SEED_TYPES.map(t => ({ groupId: groupNameToId[t.groupName], name: t.name }));
-    const createdTypes = await AssetType.insertMany(typeDocs);
-    const typeNameToId = {};
-    createdTypes.forEach(t => { typeNameToId[t.name] = t._id; });
+  // Re-create types and build name→id map
+  const typeDocs = SEED_TYPES.map(t => ({ groupId: groupNameToId[t.groupName], name: t.name }));
+  const createdTypes = await AssetType.insertMany(typeDocs);
+  const typeNameToId = {};
+  createdTypes.forEach(t => { typeNameToId[t.name] = t._id; });
 
-    // Re-create assets
-    const assetDocs = SEED_ASSETS.map(s => ({
-      typeId: typeNameToId[s.typeName],
-      name:   s.name,
-      status: s.status,
-      ...(s.rentedByUserId ? { rentedByUserId: s.rentedByUserId } : {}),
-      ...(s.returnDate     ? { returnDate:     s.returnDate }     : {}),
-    }));
-    const createdAssets = await Asset.insertMany(assetDocs);
+  // Re-create assets
+  const assetDocs = SEED_ASSETS.map(s => ({
+    typeId: typeNameToId[s.typeName],
+    name:   s.name,
+    status: s.status,
+    ...(s.rentedByUserId ? { rentedByUserId: s.rentedByUserId } : {}),
+    ...(s.returnDate     ? { returnDate:     s.returnDate }     : {}),
+  }));
+  const createdAssets = await Asset.insertMany(assetDocs);
 
-    res.json({
-      assets:        createdAssets.map(a => a.toJSON()),
-      assetTypes:    createdTypes.map(t => t.toJSON()),
-      productGroups: createdGroups.map(g => g.toJSON()),
-      skipped:       [],
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  res.json({
+    assets:        createdAssets.map(a => a.toJSON()),
+    assetTypes:    createdTypes.map(t => t.toJSON()),
+    productGroups: createdGroups.map(g => g.toJSON()),
+    skipped:       [],
+  });
 };
 
 module.exports = { listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus, requestRental, resetSeedAssets };

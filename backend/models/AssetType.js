@@ -12,9 +12,12 @@ const mongoose = require('mongoose');
 
 const assetTypeSchema = new mongoose.Schema({
   /** Reference to the parent ProductGroup this type belongs to. */
-  groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductGroup', required: true },
+  groupId:      { type: mongoose.Schema.Types.ObjectId, ref: 'ProductGroup', required: true },
   /** Human-readable product model name (e.g. "MacBook Air M2"). */
-  name:    { type: String, required: true },
+  name:         { type: String, required: true },
+  /** Photo URLs (populated by the photo service when uploads are enabled). */
+  imageUrl:     { type: String },
+  thumbnailUrl: { type: String },
 });
 
 /** Normalise output: expose `id` and `groupId` as plain strings; strip Mongoose internals. */

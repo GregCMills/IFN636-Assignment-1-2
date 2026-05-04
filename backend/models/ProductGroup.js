@@ -12,7 +12,10 @@ const mongoose = require('mongoose');
 
 const productGroupSchema = new mongoose.Schema({
   /** Human-readable category name (e.g. "Laptops"). */
-  name: { type: String, required: true },
+  name:         { type: String },
+  /** Photo URLs (populated by the photo service when uploads are enabled). */
+  imageUrl:     { type: String },
+  thumbnailUrl: { type: String },
 });
 
 /** Normalise output: expose `id` as a plain string; strip Mongoose internals. */

@@ -27,4 +27,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# extra notes and stuff
 *.notes.md
+*.plan.md
+*.report.md

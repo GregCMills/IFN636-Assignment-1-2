@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
-const STATUSES = ['Available', 'Rented', 'Pending Rental', 'Pending Return', 'Maintenance'];
+/** Status strings used by the asset lifecycle state machine. Frozen to prevent mutation. */
+const STATUSES = Object.freeze(['Available', 'Rented', 'Pending Rental', 'Pending Return', 'Maintenance']);
 
 const assetSchema = new mongoose.Schema({
   typeId:          { type: mongoose.Schema.Types.ObjectId, ref: 'AssetType', required: true },
@@ -8,6 +9,8 @@ const assetSchema = new mongoose.Schema({
   status:          { type: String, enum: STATUSES, default: 'Available' },
   rentedByUserId:  { type: String },   // Clerk user ID
   returnDate:      { type: String },   // YYYY-MM-DD string
+  imageUrl:        { type: String },   // Photo URL (populated by the photo service)
+  thumbnailUrl:    { type: String },   // Thumbnail URL (populated by the photo service)
 });
 
 assetSchema.set('toJSON', {
@@ -20,4 +23,6 @@ assetSchema.set('toJSON', {
   },
 });
 
-module.exports = mongoose.model('Asset', assetSchema);
+const AssetModel = mongoose.model('Asset', assetSchema);
+module.exports = AssetModel;
+module.exports.STATUSES = STATUSES;

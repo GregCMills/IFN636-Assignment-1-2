@@ -9,14 +9,13 @@
  */
 
 const express = require('express');
-const { protect }   = require('../middleware/authMiddleware');
-const { adminOnly } = require('../middleware/adminMiddleware');
+const auth = require('../services/auth/ClerkAuthAdapter');
 const { listTypes, createType, deleteType } = require('../controllers/typeController');
 
 const router = express.Router();
 
-router.get('/',       protect,             listTypes);
-router.post('/',      protect, adminOnly,  createType);
-router.delete('/:id', protect, adminOnly,  deleteType);
+router.get('/',       auth.requireAuth(),                  listTypes);
+router.post('/',      auth.requireAuth(), auth.adminOnly(), createType);
+router.delete('/:id', auth.requireAuth(), auth.adminOnly(), deleteType);
 
 module.exports = router;
