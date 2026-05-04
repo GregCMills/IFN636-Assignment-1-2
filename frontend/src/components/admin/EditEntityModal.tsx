@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Trash2, Loader2, ImageIcon } from 'lucide-react';
+import { X, Upload, Trash2, Loader2, ImageIcon, Undo2 } from 'lucide-react';
 
 interface EditEntityModalProps {
   isOpen: boolean;
@@ -29,6 +29,10 @@ interface EditEntityModalProps {
   submitting: boolean;
 }
 
+type PendingPhotoAction =
+  | { type: 'upload'; file: File; previewUrl: string }
+  | { type: 'delete' };
+
 const EditEntityModal = ({
   isOpen,
   onClose,
@@ -42,12 +46,33 @@ const EditEntityModal = ({
   const [name, setName] = useState(entity.name);
   const [description, setDescription] = useState(entity.description ?? '');
   const [uploading, setUploading] = useState(false);
+  const [pendingPhotoAction, setPendingPhotoAction] = useState<PendingPhotoAction | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync name/description when entity changes
   useEffect(() => {
     setName(entity.name);
     setDescription(entity.description ?? '');
   }, [entity.name, entity.description]);
+
+  // Reset pending photo action when a different entity is opened
+  useEffect(() => {
+    if (pendingPhotoAction?.type === 'upload') {
+      URL.revokeObjectURL(pendingPhotoAction.previewUrl);
+    }
+    setPendingPhotoAction(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity.id]);
+
+  // Safety net: revoke any lingering object URL on unmount
+  useEffect(() => {
+    return () => {
+      setPendingPhotoAction(prev => {
+        if (prev?.type === 'upload') URL.revokeObjectURL(prev.previewUrl);
+        return null;
+      });
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -55,34 +80,76 @@ const EditEntityModal = ({
     entityType === 'group' ? 'Product Group' :
     entityType === 'type' ? 'Product' : 'Unit';
 
-  const hasPhoto = !!entity.imageUrl;
+  // Which image to display in the modal
+  const displayImageUrl: string | undefined =
+    pendingPhotoAction?.type === 'upload'
+      ? pendingPhotoAction.previewUrl
+      : pendingPhotoAction?.type === 'delete'
+        ? undefined
+        : entity.imageUrl;
+
+  const hasPhoto = !!displayImageUrl;
+  const hasPendingPhotoChange = pendingPhotoAction !== null;
+
+  const handleClose = () => {
+    if (pendingPhotoAction?.type === 'upload') {
+      URL.revokeObjectURL(pendingPhotoAction.previewUrl);
+    }
+    setPendingPhotoAction(null);
+    onClose();
+  };
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    const updates: { name?: string; description?: string } = {};
-    if (name.trim() !== entity.name) updates.name = name.trim();
-    if (description !== (entity.description ?? '')) updates.description = description;
-    await onSave(entityType, entity.id, updates);
-  };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
     setUploading(true);
     try {
-      await onUploadPhoto(entityType, entity.id, file);
+      // 1. Execute deferred photo action first
+      if (pendingPhotoAction?.type === 'upload') {
+        await onUploadPhoto(entityType, entity.id, pendingPhotoAction.file);
+      } else if (pendingPhotoAction?.type === 'delete') {
+        await onDeletePhoto(entityType, entity.id);
+      }
+
+      // 2. Save name/description changes
+      const updates: { name?: string; description?: string } = {};
+      if (name.trim() !== entity.name) updates.name = name.trim();
+      if (description !== (entity.description ?? '')) updates.description = description;
+
+      if (Object.keys(updates).length > 0 || hasPendingPhotoChange) {
+        await onSave(entityType, entity.id, updates);
+      }
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setPendingPhotoAction(null);
     }
   };
 
-  const handleDeletePhoto = async () => {
-    setUploading(true);
-    try {
-      await onDeletePhoto(entityType, entity.id);
-    } finally {
-      setUploading(false);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Revoke any previous preview URL
+    if (pendingPhotoAction?.type === 'upload') {
+      URL.revokeObjectURL(pendingPhotoAction.previewUrl);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setPendingPhotoAction({ type: 'upload', file, previewUrl });
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleTogglePhotoDelete = () => {
+    if (pendingPhotoAction) {
+      // Undo any pending photo action
+      if (pendingPhotoAction.type === 'upload') {
+        URL.revokeObjectURL(pendingPhotoAction.previewUrl);
+      }
+      setPendingPhotoAction(null);
+    } else if (entity.imageUrl) {
+      // Mark the existing photo for deletion
+      setPendingPhotoAction({ type: 'delete' });
     }
   };
 
@@ -91,11 +158,11 @@ const EditEntityModal = ({
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div className="bg-surface-raised border border-border-default w-full max-w-4xl h-[85vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
         <button
-          onClick={onClose}
+          onClick={handleClose}
           disabled={busy}
           className="absolute top-4 right-4 z-[10] p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-all shrink-0 shadow-lg"
         >
@@ -114,10 +181,10 @@ const EditEntityModal = ({
           {/* Inner shadow for recessed depth */}
           <div className="absolute inset-0 shadow-[inset_0_0_60px_rgba(0,0,0,0.4)] pointer-events-none z-[2]" />
 
-          {entity.imageUrl ? (
+          {hasPhoto ? (
             <>
               <img
-                src={entity.imageUrl}
+                src={displayImageUrl}
                 alt={entity.name}
                 className="absolute inset-0 z-[1] w-full h-full object-cover"
               />
@@ -130,14 +197,18 @@ const EditEntityModal = ({
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white/90 hover:bg-white text-slate-900 rounded-xl text-sm font-semibold backdrop-blur-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Upload size={16} />
-                    Replace
+                    {hasPendingPhotoChange ? 'Change' : 'Replace'}
                   </button>
                   <button
-                    onClick={handleDeletePhoto}
+                    onClick={handleTogglePhotoDelete}
                     disabled={busy}
-                    className="p-2.5 bg-red-500/90 hover:bg-red-500 text-white rounded-xl backdrop-blur-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`p-2.5 rounded-xl backdrop-blur-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-white ${
+                      hasPendingPhotoChange
+                        ? 'bg-blue-500/90 hover:bg-blue-500'
+                        : 'bg-red-500/90 hover:bg-red-500'
+                    }`}
                   >
-                    {uploading ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                    {hasPendingPhotoChange ? <Undo2 size={18} /> : <Trash2 size={18} />}
                   </button>
                 </div>
               </div>
@@ -152,9 +223,19 @@ const EditEntityModal = ({
                   disabled={busy}
                   className="flex items-center gap-1.5 px-4 py-2 bg-surface-raised border border-border-default text-text-secondary rounded-xl text-sm font-medium hover:bg-border-default transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                  <Upload size={14} />
                   Upload
                 </button>
+                {hasPendingPhotoChange && (
+                  <button
+                    onClick={handleTogglePhotoDelete}
+                    disabled={busy}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-500/90 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Undo2 size={14} />
+                    Undo
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -226,9 +307,19 @@ const EditEntityModal = ({
                   disabled={busy}
                   className="btn-ghost flex items-center gap-1.5 px-3 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                  <Upload size={14} />
                   Upload Photo
                 </button>
+                {hasPendingPhotoChange && (
+                  <button
+                    onClick={handleTogglePhotoDelete}
+                    disabled={busy}
+                    className="btn-ghost flex items-center gap-1.5 px-3 py-2 text-sm text-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Undo2 size={14} />
+                    Undo
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -236,7 +327,7 @@ const EditEntityModal = ({
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border-default/50">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               disabled={busy}
               className="px-4 py-2 text-text-muted hover:text-text-primary font-medium transition-colors text-sm"
             >
@@ -247,7 +338,7 @@ const EditEntityModal = ({
               disabled={busy || !name.trim()}
               className="btn-primary px-5 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving…' : 'Save Changes'}
+              {busy ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </div>

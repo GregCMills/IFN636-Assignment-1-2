@@ -22,10 +22,6 @@ const AppLayout = () => {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Mobile top bar — only visible below md breakpoint */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-border-default shrink-0">
-          <div className="flex items-center gap-2">
-            <img src="/rental_manager_logo_small.png" alt="Logo" className="h-7 w-auto" />
-            <span className="font-bold text-text-primary">Rental Manager</span>
-          </div>
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-1.5 rounded-md text-text-muted hover:bg-surface-elevated hover:text-text-primary transition"
@@ -33,6 +29,10 @@ const AppLayout = () => {
           >
             <Menu size={22} />
           </button>
+          <div className="flex items-center gap-2">
+            <img src="/rental_manager_logo_small.png" alt="Logo" className="h-7 w-auto" />
+            <span className="font-bold text-text-primary">Rental Manager</span>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">
