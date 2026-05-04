@@ -1,29 +1,133 @@
 const SEED_GROUPS = [
-  { name: 'Laptops' },
-  { name: 'Projectors' },
-  { name: 'Cameras' },
-  { name: 'Audio' },
-  { name: 'Lighting' },
-  { name: 'Networking' },
+  { 
+    name: 'Laptops', 
+    description: 'High-performance portable computers for work and creative tasks.',
+    imageFile: 'group_laptops.jpg'
+  },
+  { 
+    name: 'Projectors', 
+    description: 'Visual projection equipment for presentations, movies, and events.',
+    imageFile: 'group_projectors.jpg'
+  },
+  { 
+    name: 'Cameras', 
+    description: 'Professional digital cameras and accessories for photography and videography.',
+    imageFile: 'group_cameras.jpg'
+  },
+  { 
+    name: 'Audio', 
+    description: 'High-quality sound recording and playback equipment.',
+    imageFile: 'group_audio.jpg'
+  },
+  { 
+    name: 'Lighting', 
+    description: 'Professional lighting solutions for studio and location shoots.',
+    imageFile: 'group_lighting.jpg'
+  },
+  { 
+    name: 'Networking', 
+    description: 'Reliable networking hardware for seamless connectivity.',
+    imageFile: 'group_networking.jpg'
+  },
 ];
 
 const SEED_TYPES = [
-  { groupName: 'Laptops',    name: 'MacBook Air M2' },
-  { groupName: 'Laptops',    name: 'Dell XPS 15' },
-  { groupName: 'Laptops',    name: 'Lenovo ThinkPad X1 Carbon' },
-  { groupName: 'Laptops',    name: 'Microsoft Surface Pro 9' },
-  { groupName: 'Projectors', name: 'Epson 4K Projector' },
-  { groupName: 'Projectors', name: 'BenQ Short Throw' },
-  { groupName: 'Cameras',    name: 'Sony A7III Camera' },
-  { groupName: 'Cameras',    name: 'Canon EOS R6' },
-  { groupName: 'Cameras',    name: 'GoPro Hero 12' },
-  { groupName: 'Audio',      name: 'Rode Wireless GO II' },
-  { groupName: 'Audio',      name: 'Zoom H6 Recorder' },
-  { groupName: 'Audio',      name: 'Sennheiser HD 660S Headphones' },
-  { groupName: 'Lighting',   name: 'Elgato Key Light Air' },
-  { groupName: 'Lighting',   name: 'Aputure 120D II' },
-  { groupName: 'Networking', name: 'TP-Link Wi-Fi 6 Router' },
-  { groupName: 'Networking', name: 'Cisco 8-Port Managed Switch' },
+  { 
+    groupName: 'Laptops',    
+    name: 'MacBook Air M2', 
+    description: 'Apple M2 chip with 8-core CPU and 10-core GPU, 13.6-inch Liquid Retina display.',
+    imageFile: 'type_macbook_air_m2.jpg'
+  },
+  { 
+    groupName: 'Laptops',    
+    name: 'Dell XPS 15', 
+    description: 'High-performance laptop with 15.6-inch 4K OLED display and NVIDIA GeForce RTX graphics.',
+    imageFile: 'type_dell_xps_15.jpg'
+  },
+  { 
+    groupName: 'Laptops',    
+    name: 'Lenovo ThinkPad X1 Carbon', 
+    description: 'Premium business laptop featuring a lightweight carbon-fiber chassis and legendary durability.',
+    imageFile: 'type_lenovo_thinkpad_x1_carbon.jpg'
+  },
+  { 
+    groupName: 'Laptops',    
+    name: 'Microsoft Surface Pro 9', 
+    description: 'Versatile 2-in-1 tablet and laptop with a 13-inch touchscreen and adjustable kickstand.',
+    imageFile: 'type_microsoft_surface_pro_9.jpg'
+  },
+  { 
+    groupName: 'Projectors', 
+    name: 'Epson 4K Projector', 
+    description: 'Home theater projector with 4K PRO-UHD resolution and high brightness for vivid images.',
+    imageFile: 'type_epson_4k_projector.jpg'
+  },
+  { 
+    groupName: 'Projectors', 
+    name: 'BenQ Short Throw', 
+    description: 'Short-throw projector ideal for small spaces, delivering large images from a short distance.',
+    imageFile: 'type_benq_short_throw.jpg'
+  },
+  { 
+    groupName: 'Cameras',    
+    name: 'Sony A7III Camera', 
+    description: 'Full-frame mirrorless camera with advanced autofocus and 4K video capabilities.',
+    imageFile: 'type_sony_a7iii_camera.jpg'
+  },
+  { 
+    groupName: 'Cameras',    
+    name: 'Canon EOS R6', 
+    description: 'Versatile mirrorless camera with high-speed continuous shooting and excellent low-light performance.',
+    imageFile: 'type_canon_eos_r6.jpg'
+  },
+  { 
+    groupName: 'Cameras',    
+    name: 'GoPro Hero 12', 
+    description: 'Rugged action camera with HyperSmooth 6.0 stabilization and waterproof design.',
+    imageFile: 'type_gopro_hero_12.jpg'
+  },
+  { 
+    groupName: 'Audio',      
+    name: 'Rode Wireless GO II', 
+    description: 'Compact wireless microphone system with dual-channel recording and universal compatibility.',
+    imageFile: 'type_rode_wireless_go_ii.jpg'
+  },
+  { 
+    groupName: 'Audio',      
+    name: 'Zoom H6 Recorder', 
+    description: 'Portable multi-track recorder with interchangeable microphone capsules for professional audio.',
+    imageFile: 'type_zoom_h6_recorder.jpg'
+  },
+  { 
+    groupName: 'Audio',      
+    name: 'Sennheiser HD 660S Headphones', 
+    description: 'Open-back dynamic headphones designed for critical listening and audiophile performance.',
+    imageFile: 'type_sennheiser_hd_660s_headphones.jpg'
+  },
+  { 
+    groupName: 'Lighting',   
+    name: 'Elgato Key Light Air', 
+    description: 'App-controlled LED panel with flicker-free illumination and adjustable color temperature.',
+    imageFile: 'type_elgato_key_light_air.jpg'
+  },
+  { 
+    groupName: 'Lighting',   
+    name: 'Aputure 120D II', 
+    description: 'Professional-grade COB LED light with high color accuracy and versatile light shaping options.',
+    imageFile: 'type_aputure_120d_ii.jpg'
+  },
+  { 
+    groupName: 'Networking', 
+    name: 'TP-Link Wi-Fi 6 Router', 
+    description: 'Next-gen Wi-Fi 6 router with high speeds and increased capacity for multiple devices.',
+    imageFile: 'type_tp-link_wi-fi_6_router.jpg'
+  },
+  { 
+    groupName: 'Networking', 
+    name: 'Cisco 8-Port Managed Switch', 
+    description: 'Reliable managed switch with 8 Gigabit Ethernet ports for secure network expansion.',
+    imageFile: 'type_cisco_8-port_managed_switch.jpg'
+  },
 ];
 
 const SEED_ASSETS = [

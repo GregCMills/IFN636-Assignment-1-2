@@ -176,6 +176,27 @@ const batchCreateAssets = async (req, res) => {
   res.status(201).json(created);
 };
 
+const PhotoService = require('../services/photo/PhotoService');
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * Helper to process a local seed image if it exists.
+ */
+const processSeedImage = async (entityType, entityId, filename) => {
+  const seedImagePath = path.join(__dirname, '../data/images', filename);
+  if (!fs.existsSync(seedImagePath)) return;
+
+  const buffer = fs.readFileSync(seedImagePath);
+  const file = {
+    buffer,
+    mimetype: 'image/jpeg', // All our seed images are .jpg
+    originalname: filename
+  };
+
+  await PhotoService.uploadPhoto(entityType, entityId, file);
+};
+
 /**
  * POST /api/assets/reset-seed  (admin only — enforced by adminMiddleware on the route)
  * Full reset: deletes all Assets, AssetTypes, and ProductGroups, then re-creates
@@ -193,13 +214,29 @@ const resetSeedAssets = async (req, res) => {
   // Re-create groups and build name→id map
   const createdGroups = await ProductGroup.insertMany(SEED_GROUPS);
   const groupNameToId = {};
-  createdGroups.forEach(g => { groupNameToId[g.name] = g._id; });
+  for (const g of createdGroups) {
+    groupNameToId[g.name] = g._id;
+    const seedGroup = SEED_GROUPS.find(sg => sg.name === g.name);
+    if (seedGroup?.imageFile) {
+      await processSeedImage('group', g._id.toString(), seedGroup.imageFile);
+    }
+  }
 
   // Re-create types and build name→id map
-  const typeDocs = SEED_TYPES.map(t => ({ groupId: groupNameToId[t.groupName], name: t.name }));
+  const typeDocs = SEED_TYPES.map(t => ({
+    groupId: groupNameToId[t.groupName],
+    name: t.name,
+    description: t.description || ''
+  }));
   const createdTypes = await AssetType.insertMany(typeDocs);
   const typeNameToId = {};
-  createdTypes.forEach(t => { typeNameToId[t.name] = t._id; });
+  for (const t of createdTypes) {
+    typeNameToId[t.name] = t._id;
+    const seedType = SEED_TYPES.find(st => st.name === t.name);
+    if (seedType?.imageFile) {
+      await processSeedImage('type', t._id.toString(), seedType.imageFile);
+    }
+  }
 
   // Re-create assets
   const assetDocs = SEED_ASSETS.map(s => ({
