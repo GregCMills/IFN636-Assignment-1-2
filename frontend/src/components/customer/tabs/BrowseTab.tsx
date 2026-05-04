@@ -85,25 +85,20 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
                   const inCart    = cart[type.id] ?? 0;
                   return (
                     <div key={type.id} className="card relative overflow-hidden flex group h-32">
-                      {/* Left side: Image with Fade */}
+                      {/* Left side: Square Image with Shadow */}
                       {type.imageUrl && (
-                        <div className="absolute inset-0 z-0 flex">
-                          <div className="aspect-square h-full shrink-0 relative">
-                            <img 
-                              src={type.imageUrl} 
-                              alt="" 
-                              className="w-full h-full object-cover cursor-pointer"
-                              onClick={() => setLightboxUrl(type.imageUrl ?? null)}
-                            />
-                            {/* Fade overlay - tightened further to show even more product */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent from-70% via-transparent to-surface-raised" />
-                          </div>
-                          <div className="flex-1 bg-surface-raised" />
+                        <div className="aspect-square h-full shrink-0 relative z-20 shadow-[6px_0_15px_rgba(0,0,0,0.5)] border-r border-border-default">
+                          <img 
+                            src={type.imageUrl} 
+                            alt="" 
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => setLightboxUrl(type.imageUrl ?? null)}
+                          />
                         </div>
                       )}
 
                       {/* Right side: Content */}
-                      <div className="relative z-10 flex-1 p-2 min-w-0 flex flex-col justify-between ml-[33.333%] items-end text-right">
+                      <div className="relative z-10 flex-1 p-2 min-w-0 flex flex-col justify-between items-end text-right bg-surface-raised">
                         <h3 className="text-base font-bold text-text-secondary line-clamp-2 leading-tight">{type.name}</h3>
 
                         <div className="flex flex-col items-end gap-1">
