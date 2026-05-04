@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Camera } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import ConfirmModal from '../../ConfirmModal';
 import InlineErrorBanner from '../../ui/InlineErrorBanner';
 import ImageLightbox from '../../ui/ImageLightbox';
+import EditEntityModal from '../EditEntityModal';
 
 interface PendingDelete {
   action: () => Promise<void>;
@@ -32,6 +33,8 @@ const AssetManagementTab = ({
   createAssets,
   deleteAsset,
   uploadPhoto,
+  deletePhoto,
+  updateEntity,
 }: AdminTabProps) => {
   const [newGroupName,    setNewGroupName]    = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(productGroups[0]?.id ?? null);
@@ -43,8 +46,22 @@ const AssetManagementTab = ({
   const [apiError,        setApiError]        = useState('');
   const [pendingDelete,   setPendingDelete]   = useState<PendingDelete | null>(null);
   const [lightboxUrl,     setLightboxUrl]     = useState<string | null>(null);
-  const [photoTarget,     setPhotoTarget]     = useState<{ entityType: 'group' | 'type' | 'asset'; id: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editTarget, setEditTarget] = useState<{
+    entityType: 'group' | 'type' | 'asset';
+    entityId: string;
+  } | null>(null);
+
+  // Derive the full entity from the live data arrays so photo uploads/deletes
+  // are reflected immediately without needing to close and reopen the modal.
+  const editEntity = useMemo(() => {
+    if (!editTarget) return null;
+    switch (editTarget.entityType) {
+      case 'group': return productGroups.find(g => g.id === editTarget.entityId) ?? null;
+      case 'type':  return assetTypes.find(t => t.id === editTarget.entityId) ?? null;
+      case 'asset': return assets.find(a => a.id === editTarget.entityId) ?? null;
+    }
+    return null;
+  }, [editTarget, productGroups, assetTypes, assets]);
 
   // Keep selectedTypeId in sync when selected group changes
   useEffect(() => {
@@ -65,16 +82,25 @@ const AssetManagementTab = ({
     if (typeName) setUnitPrefix(typeName.slice(0, 3).toUpperCase());
   }, [selectedTypeId, assetTypes]);
 
+  /**
+   * withSubmit wraps an async form submission or handler function, providing common
+   * UX feedback: it sets submitting=true during the request, clears API errors, 
+   * and captures/display errors from the API/fn if they occur. It ensures the submitting
+   * flag is reset after completion or any exception.
+   * 
+   * Usage: withSubmit(async () => {... your API logic ...});
+   */
   const withSubmit = async (fn: () => Promise<void>) => {
-    setSubmitting(true);
-    setApiError('');
+    setSubmitting(true);     // Show loading state on form/buttons
+    setApiError('');         // Clear any prior API error
     try {
-      await fn();
+      await fn();            // Run the provided async handler
     } catch (err: unknown) {
+      // Try to surface error returned by API (axios style), fallback to generic
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'An error occurred';
       setApiError(msg);
     } finally {
-      setSubmitting(false);
+      setSubmitting(false);  // Always turn off loading state after completion
     }
   };
 
@@ -191,24 +217,6 @@ const AssetManagementTab = ({
   const selectedGroup = productGroups.find(g => g.id === selectedGroupId);
   const selectedType  = assetTypes.find(t => t.id === selectedTypeId);
 
-  const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !photoTarget) return;
-    setSubmitting(true);
-    try {
-      await uploadPhoto(photoTarget.entityType, photoTarget.id, file);
-    } finally {
-      setSubmitting(false);
-      setPhotoTarget(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const openPhotoPicker = (entityType: 'group' | 'type' | 'asset', id: string) => {
-    setPhotoTarget({ entityType, id });
-    fileInputRef.current?.click();
-  };
-
   return (
     <div className="flex flex-col gap-6">
 
@@ -256,19 +264,22 @@ const AssetManagementTab = ({
                 ) : null}
 
                 {/* Title with gradient overlay */}
-                <div className="absolute top-0 inset-x-0 pt-4 pb-10 bg-gradient-to-b from-black/90 to-transparent flex justify-center z-10 pointer-events-none">
+                <div className="absolute top-0 inset-x-0 pt-4 pb-10 bg-gradient-to-b from-black/90 to-transparent flex flex-col items-center z-10 pointer-events-none">
                   <span className="text-white text-sm font-bold tracking-wide drop-shadow-lg px-4 truncate">{group.name}</span>
+                  {group.description && (
+                    <span className="text-white/70 text-xs mt-0.5 px-4 line-clamp-1">{group.description}</span>
+                  )}
                 </div>
 
                 {/* Hover action buttons */}
                 <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/40 backdrop-blur-[2px] z-20 pt-4">
                   <button
-                    onClick={e => { e.stopPropagation(); openPhotoPicker('group', group.id); }}
+                    onClick={e => { e.stopPropagation(); setEditTarget({ entityType: 'group', entityId: group.id }); }}
                     disabled={submitting}
                     className="w-11 h-11 flex items-center justify-center bg-surface-elevated text-text-primary rounded-full transition-all duration-200 hover:bg-white hover:text-black hover:scale-110 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={group.imageUrl ? 'Replace photo' : 'Add photo'}
+                    title="Edit group"
                   >
-                    <Camera size={20} />
+                    <Pencil size={20} />
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); handleDeleteGroup(group.id); }}
@@ -336,18 +347,21 @@ const AssetManagementTab = ({
                         />
                       ) : null}
 
-                      <div className="absolute top-0 inset-x-0 pt-4 pb-10 bg-gradient-to-b from-black/90 to-transparent flex justify-center z-10 pointer-events-none">
+                      <div className="absolute top-0 inset-x-0 pt-4 pb-10 bg-gradient-to-b from-black/90 to-transparent flex flex-col items-center z-10 pointer-events-none">
                         <span className="text-white text-sm font-bold tracking-wide drop-shadow-lg px-4 truncate">{type.name}</span>
+                        {type.description && (
+                          <span className="text-white/70 text-xs mt-0.5 px-4 line-clamp-1">{type.description}</span>
+                        )}
                       </div>
 
                       <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/40 backdrop-blur-[2px] z-20 pt-4">
                         <button
-                          onClick={e => { e.stopPropagation(); openPhotoPicker('type', type.id); }}
+                          onClick={e => { e.stopPropagation(); setEditTarget({ entityType: 'type', entityId: type.id }); }}
                           disabled={submitting}
                           className="w-11 h-11 flex items-center justify-center bg-surface-elevated text-text-primary rounded-full transition-all duration-200 hover:bg-white hover:text-black hover:scale-110 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={type.imageUrl ? 'Replace photo' : 'Add photo'}
+                          title="Edit product"
                         >
-                          <Camera size={20} />
+                          <Pencil size={20} />
                         </button>
                         <button
                           onClick={e => { e.stopPropagation(); handleDeleteType(type.id); }}
@@ -435,17 +449,22 @@ const AssetManagementTab = ({
                     onClick={() => setLightboxUrl(unit.imageUrl ?? null)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-bold text-text-primary truncate">{unit.name}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-text-primary truncate">{unit.name}</span>
+                        {unit.description && (
+                          <span className="text-text-muted text-xs truncate">{unit.description}</span>
+                        )}
+                      </div>
                       <span className={statusBadgeClass(unit.status)}>{unit.status}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <button
-                        onClick={e => { e.stopPropagation(); openPhotoPicker('asset', unit.id); }}
+                        onClick={e => { e.stopPropagation(); setEditTarget({ entityType: 'asset', entityId: unit.id }); }}
                         disabled={submitting}
                         className="text-text-muted hover:text-brand-light transition opacity-0 group-hover:opacity-100 p-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                        title={unit.imageUrl ? 'Replace photo' : 'Add photo'}
+                        title="Edit unit"
                       >
-                        <Camera size={16} />
+                        <Pencil size={16} />
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); handleDeleteUnit(unit.id); }}
@@ -470,16 +489,6 @@ const AssetManagementTab = ({
         )}
       </section>
 
-      {/* Hidden file input shared by all photo uploads */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handlePhotoFile}
-        disabled={submitting}
-      />
-
       <ConfirmModal
         isOpen={!!pendingDelete}
         title={pendingDelete?.title ?? ''}
@@ -495,6 +504,22 @@ const AssetManagementTab = ({
       />
 
       <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+
+      {editEntity && editTarget && (
+        <EditEntityModal
+          isOpen={!!editEntity}
+          onClose={() => setEditTarget(null)}
+          entityType={editTarget.entityType}
+          entity={editEntity}
+          onSave={async (entityType, id, updates) => {
+            await updateEntity(entityType, id, updates);
+            setEditTarget(null);
+          }}
+          onUploadPhoto={uploadPhoto}
+          onDeletePhoto={deletePhoto}
+          submitting={submitting}
+        />
+      )}
 
     </div>
   );

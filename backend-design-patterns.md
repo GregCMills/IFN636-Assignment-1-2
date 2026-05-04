@@ -179,17 +179,19 @@ format.
 
 #### 2c. Photo service (`services/photo/PhotoService.js`)
 
-The `PhotoService` is a facade over the entire photo subsystem. It exposes three
-methods — `uploadPhoto()`, `deletePhoto()`, `getPhotoUrl()` — and hides behind
+The `PhotoService` is a facade over the entire photo subsystem. It exposes four
+methods — `uploadPhoto()`, `deletePhoto()`, `getPhotoUrl()`, and `updateEntity()` — and hides behind
 them the complexity of:
 
 - **Storage strategy** — file system operations (save/delete/getUrl)
 - **Image processing** — resizing and thumbnail generation via `sharp`
 - **Entity handlers** — Mongoose model queries for each entity type
 
-Controllers call `photoService.uploadPhoto('group', id, req.file)` without
-knowing how files are stored, how images are processed, or which Mongoose model
-is being updated.
+Controllers call `photoService.uploadPhoto('group', id, req.file)` or
+`photoService.updateEntity('group', id, { name, description })` without
+knowing how files are stored, how images are processed, which Mongoose model
+is being updated, or how entity name/description updates are routed to the
+correct handler.
 
 ### Evaluation
 
@@ -229,7 +231,8 @@ assetSchema.set('toJSON', {
 
 The same pattern appears in `AssetType.js` and `ProductGroup.js`. Without these
 adapters, the frontend would receive raw `ObjectId` objects and MongoDB-internal
-fields.
+fields. Fields like `name` and the newly-added `description` pass through
+unchanged because they are plain strings.
 
 #### 3b. Auth adapter (`services/auth/`)
 
@@ -435,6 +438,28 @@ Key design decisions:
 This pattern separates HTTP concerns from business logic. Controllers express
 error conditions declaratively (`throw new NotFoundError(...)`) and the global
 handler translates error types into HTTP responses in one place.
+
+Adding `PATCH /:id` routes for entity name/description updates extends the
+same chain pattern — the new routes follow the identical `auth.requireAuth()`,
+`auth.adminOnly()` sequence before reaching the controller:
+
+```js
+router.patch('/:id', auth.requireAuth(), auth.adminOnly(), updateEntity('group'));
+```
+
+The full chain for an entity update:
+
+```
+auth.requireAuth() → auth.adminOnly() → updateEntity
+```
+
+1. `auth.requireAuth()` — checks authentication (401 if unauthenticated).
+2. `auth.adminOnly()` — checks admin role (403 if not admin).
+3. `updateEntity('group')` — the terminal handler: validates input and updates
+   the entity via PhotoService.
+
+All three entity types (groups, types, assets) share the same chain structure,
+differing only in the entity type string passed to the controller factory.
 
 #### 5d. Upload validation chain (`middleware/uploadMiddleware.js`)
 
@@ -954,6 +979,7 @@ class EntityPhotoHandler {
   async updatePhoto(id, imageUrl, thumbnailUrl) { /* ... */ }
   async getPhotoPaths(id) { /* ... */ }
   async deleteEntityPhotoFiles(id, storageStrategy) { /* ... */ }
+  async updateEntity(id, updates) { /* finds doc, applies partial update, saves */ }
 }
 ```
 
@@ -987,6 +1013,7 @@ interface without knowing which concrete handler it received:
 const handler = PhotoHandlerFactory.create(entityType);
 await handler.deleteEntityPhotoFiles(entityId, this.storageStrategy);
 await handler.updatePhoto(entityId, imageUrl, thumbnailUrl);
+await handler.updateEntity(entityId, { name, description });
 ```
 
 ### Factory Method structure
@@ -1125,9 +1152,10 @@ This cleanly separates HTTP concerns (status codes) from business logic
 No pattern conflicts with another. Controllers use Adapter + Composite + State +
 Strategy in a single request flow without any pattern fighting for control.
 
-### PhotoService — five patterns in one operation
+### PhotoService — multiple patterns in every operation
 
-A single `uploadPhoto()` call coordinates five patterns:
+A single `uploadPhoto()` call coordinates five patterns; a single `updateEntity()`
+call coordinates three:
 
 ```mermaid
 flowchart TD
@@ -1138,15 +1166,20 @@ flowchart TD
     Facade -->|"save(dir, name, buf)"| Strategy[LocalStorageStrategy Strategy]
     Factory -->|returns| Handler[EntityPhotoHandler]
     Handler -->|"updatePhoto(id, url)"| Model[Mongoose Model]
+    Handler -->|"updateEntity(id, updates)"| Model
 ```
 
-1. **Facade** — `PhotoService` presents a simple 3-method interface.
+1. **Facade** — `PhotoService` presents a simple 4-method interface.
 2. **Factory Method** — `PhotoHandlerFactory.create()` returns the right handler.
 3. **Builder** — `ProcessedPhotoBuilder` constructs the processed image step by
    step, orchestrated by `PhotoProcessingDirector` (Director).
 4. **Strategy** — `LocalStorageStrategy` handles file I/O; swappable for S3 etc.
 5. **Singleton** — `PhotoService` is a singleton; all modules share one storage
    strategy instance.
+
+The `updateEntity()` method employs the Facade and Factory Method patterns
+without needing the Builder or Strategy — it simply routes partial updates
+through the factory-selected handler to the correct Mongoose model.
 
 ### Composite + Strategy — cascading photo cleanup
 
@@ -1170,8 +1203,9 @@ filesystem paths, S3 buckets, or Cloudinary URLs — it calls
 | Decorator | Middleware stack verified by route-level integration tests. |
 | Chain of Responsibility | Middleware chain verified by auth integration tests (401/403 responses). Upload validation chain (multer + validateFileType) verified by photo tests (400 for invalid file types). |
 | Template Method | Verified by State pattern unit tests and Composite integration tests. |
-| Factory Method | PhotoHandlerFactory.create() returns the correct handler subclass for each entity type. Verified by integration tests via PhotoService. |
+| Factory Method | PhotoHandlerFactory.create() returns the correct handler subclass for each entity type. Verified by integration tests via PhotoService. `updateEntity()` added to the base class extends the pattern — all three subclasses inherit it without changes. |
 | Builder | ProcessedPhotoBuilder and PhotoProcessingDirector verified by photo integration tests (correct resize + thumbnail dimensions). |
+| Controller | `photoController.js` exports `updateEntity` as a higher-order function following the same factory pattern as `uploadPhoto` and `deletePhoto`. 12 dedicated integration tests cover all PATCH scenarios (200, 400, 404, 401, 403 for groups, types, and assets). |
 
 ---
 

@@ -13,7 +13,7 @@
 const express = require('express');
 const auth = require('../services/auth/ClerkAuthAdapter');
 const { listTypes, createType, deleteType } = require('../controllers/typeController');
-const { uploadPhoto, deletePhoto    } = require('../controllers/photoController');
+const { uploadPhoto, deletePhoto, updateEntity } = require('../controllers/photoController');
 const { upload, validateFileType   } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
@@ -22,6 +22,7 @@ router.get('/',               auth.requireAuth(),                               
 router.post('/',              auth.requireAuth(), auth.adminOnly(),                          createType);
 router.post('/:id/photo',     auth.requireAuth(), auth.adminOnly(), upload.single('photo'),  validateFileType, uploadPhoto('type'));
 router.delete('/:id/photo',   auth.requireAuth(), auth.adminOnly(),                          deletePhoto('type'));
+router.patch('/:id',          auth.requireAuth(), auth.adminOnly(),                          updateEntity('type'));
 router.delete('/:id',         auth.requireAuth(), auth.adminOnly(),                          deleteType);
 
 module.exports = router;

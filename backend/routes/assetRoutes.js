@@ -21,7 +21,7 @@ const auth = require('../services/auth/ClerkAuthAdapter');
 const {
   listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus, requestRental, resetSeedAssets,
 } = require('../controllers/assetController');
-const { uploadPhoto, deletePhoto    } = require('../controllers/photoController');
+const { uploadPhoto, deletePhoto, updateEntity } = require('../controllers/photoController');
 const { upload, validateFileType   } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
@@ -35,6 +35,7 @@ router.post('/request-rental',  auth.requireAuth(),              requestRental);
 router.post('/reset-seed',      auth.requireAuth(), auth.adminOnly(), resetSeedAssets);
 router.post('/:id/photo',       auth.requireAuth(), auth.adminOnly(), upload.single('photo'), validateFileType, uploadPhoto('asset'));
 router.delete('/:id/photo',     auth.requireAuth(), auth.adminOnly(), deletePhoto('asset'));
+router.patch('/:id',            auth.requireAuth(), auth.adminOnly(), updateEntity('asset'));
 router.delete('/:id',           auth.requireAuth(), auth.adminOnly(), deleteAsset);
 
 module.exports = router;

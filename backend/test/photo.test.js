@@ -407,4 +407,119 @@ describe('Photo Upload API', () => {
       expect(fs.existsSync(assetImgPath)).to.be.false;
     });
   });
+
+  // ── PATCH /api/:entityType/:id (update entity name/description) ─────────────
+
+  describe('PATCH /api/:entityType/:id', () => {
+    it('updates a group name and description', async () => {
+      const group = await mkGroup('Original Name');
+      const res = await request(app)
+        .patch(`/api/groups/${group.id}`)
+        .send({ name: 'Updated Name', description: 'A new description' });
+      expect(res.status).to.equal(200);
+      expect(res.body.name).to.equal('Updated Name');
+      expect(res.body.description).to.equal('A new description');
+      // Verify DB
+      const updated = await ProductGroup.findById(group.id);
+      expect(updated.name).to.equal('Updated Name');
+      expect(updated.description).to.equal('A new description');
+    });
+
+    it('updates only the description (name unchanged)', async () => {
+      const group = await mkGroup('Keep This Name');
+      const res = await request(app)
+        .patch(`/api/groups/${group.id}`)
+        .send({ description: 'Only description changed' });
+      expect(res.status).to.equal(200);
+      expect(res.body.name).to.equal('Keep This Name');
+      expect(res.body.description).to.equal('Only description changed');
+    });
+
+    it('updates only the name (description unchanged)', async () => {
+      const group = await mkGroup('Old Name');
+      // Pre-set a description
+      await ProductGroup.findByIdAndUpdate(group.id, { description: 'Existing desc' });
+      const res = await request(app)
+        .patch(`/api/groups/${group.id}`)
+        .send({ name: 'New Name' });
+      expect(res.status).to.equal(200);
+      expect(res.body.name).to.equal('New Name');
+      expect(res.body.description).to.equal('Existing desc');
+    });
+
+    it('returns 400 for empty name', async () => {
+      const group = await mkGroup('Some Name');
+      const res = await request(app)
+        .patch(`/api/groups/${group.id}`)
+        .send({ name: '   ' });
+      expect(res.status).to.equal(400);
+      expect(res.body.message).to.contain('Name cannot be empty');
+    });
+
+    it('returns 404 for non-existent ID', async () => {
+      const res = await request(app)
+        .patch('/api/groups/000000000000000000000000')
+        .send({ name: 'Test' });
+      expect(res.status).to.equal(404);
+    });
+
+    it('returns 401 when unauthenticated', async () => {
+      clerkMock.setAuth(null);
+      const group = await mkGroup('Test');
+      const res = await request(app)
+        .patch(`/api/groups/${group.id}`)
+        .send({ name: 'Hack' });
+      expect(res.status).to.equal(401);
+    });
+
+    it('returns 403 when non-admin', async () => {
+      clerkMock.setRole('customer');
+      const group = await mkGroup('Test');
+      const res = await request(app)
+        .patch(`/api/groups/${group.id}`)
+        .send({ name: 'Hack' });
+      expect(res.status).to.equal(403);
+    });
+
+    it('works for types', async () => {
+      const group = await mkGroup();
+      const type = await mkType(group.id, 'Old Type');
+      const res = await request(app)
+        .patch(`/api/types/${type.id}`)
+        .send({ name: 'New Type', description: 'Type desc' });
+      expect(res.status).to.equal(200);
+      expect(res.body.name).to.equal('New Type');
+      expect(res.body.description).to.equal('Type desc');
+    });
+
+    it('works for assets', async () => {
+      const group = await mkGroup();
+      const type = await mkType(group.id);
+      const asset = await mkAsset(type.id, 'Old Asset');
+      const res = await request(app)
+        .patch(`/api/assets/${asset.id}`)
+        .send({ name: 'New Asset', description: 'Asset desc' });
+      expect(res.status).to.equal(200);
+      expect(res.body.name).to.equal('New Asset');
+      expect(res.body.description).to.equal('Asset desc');
+    });
+
+    it('description field appears in GET responses', async () => {
+      const group = await ProductGroup.create({ name: 'Desc Group', description: 'test description' });
+      const res = await request(app).get('/api/groups');
+      expect(res.status).to.equal(200);
+      const found = res.body.find(g => g.id === group.id);
+      expect(found).to.exist;
+      expect(found.description).to.equal('test description');
+    });
+
+    it('returns no description field when not set', async () => {
+      const group = await ProductGroup.create({ name: 'No Desc' });
+      const res = await request(app).get('/api/groups');
+      expect(res.status).to.equal(200);
+      const found = res.body.find(g => g.id === group.id);
+      expect(found).to.exist;
+      expect(found.description).to.equal('');
+    });
+  });
 });

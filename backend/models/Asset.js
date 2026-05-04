@@ -6,6 +6,7 @@ const STATUSES = Object.freeze(['Available', 'Rented', 'Pending Rental', 'Pendin
 const assetSchema = new mongoose.Schema({
   typeId:          { type: mongoose.Schema.Types.ObjectId, ref: 'AssetType', required: true },
   name:            { type: String, required: true },
+  description:     { type: String, default: '' },
   status:          { type: String, enum: STATUSES, default: 'Available' },
   rentedByUserId:  { type: String },   // Clerk user ID
   returnDate:      { type: String },   // YYYY-MM-DD string

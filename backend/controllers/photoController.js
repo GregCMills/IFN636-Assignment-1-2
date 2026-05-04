@@ -43,4 +43,28 @@ const deletePhoto = (entityType) => async (req, res) => {
   res.json({ success: true });
 };
 
-module.exports = { uploadPhoto, deletePhoto };
+/**
+ * Creates an update handler for a specific entity type.
+ *
+ * PATCH /api/<entity>/:id
+ *
+ * Only updates fields that are present in the request body.  Validates that
+ * the name (if provided) is non-empty after trimming.
+ *
+ * @param {'group'|'type'|'asset'} entityType
+ * @returns {import('express').RequestHandler}
+ */
+const updateEntity = (entityType) => async (req, res) => {
+  const { name, description } = req.body;
+  if (name !== undefined && !name?.trim()) {
+    throw new ValidationError('Name cannot be empty');
+  }
+  const result = await photoService.updateEntity(entityType, req.params.id, {
+    ...(name !== undefined && { name: name.trim() }),
+    ...(description !== undefined && { description }),
+  });
+  if (!result) throw new NotFoundError(`${entityType} not found`);
+  res.json(result);
+};
+
+module.exports = { uploadPhoto, deletePhoto, updateEntity };

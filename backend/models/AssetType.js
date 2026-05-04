@@ -15,6 +15,8 @@ const assetTypeSchema = new mongoose.Schema({
   groupId:      { type: mongoose.Schema.Types.ObjectId, ref: 'ProductGroup', required: true },
   /** Human-readable product model name (e.g. "MacBook Air M2"). */
   name:         { type: String, required: true },
+  /** Optional description of this product type. */
+  description:  { type: String, default: '' },
   /** Photo URLs (populated by the photo service when uploads are enabled). */
   imageUrl:     { type: String },
   thumbnailUrl: { type: String },

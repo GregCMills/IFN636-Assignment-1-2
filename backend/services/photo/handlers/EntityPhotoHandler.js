@@ -71,6 +71,27 @@ class EntityPhotoHandler {
     if (paths.imageUrl)     await storageStrategy.delete(paths.imageUrl);
     if (paths.thumbnailUrl) await storageStrategy.delete(paths.thumbnailUrl);
   }
+
+  /**
+   * Partially updates an entity's name and/or description.
+   *
+   * Only the fields present in the `updates` object are modified — if the
+   * client only sends `{ description: "..." }` the name is left untouched.
+   * Uses findById + save (rather than findByIdAndUpdate) so Mongoose
+   * validation runs on the modified document.
+   *
+   * @param {string} id      - MongoDB ObjectId as a string
+   * @param {object} updates - { name?: string, description?: string }
+   * @returns {Promise<object|null>} The updated document or null if not found
+   */
+  async updateEntity(id, updates) {
+    const doc = await this.model.findById(id);
+    if (!doc) return null;
+    if (updates.name !== undefined) doc.name = updates.name;
+    if (updates.description !== undefined) doc.description = updates.description;
+    await doc.save();
+    return doc;
+  }
 }
 
 module.exports = EntityPhotoHandler;

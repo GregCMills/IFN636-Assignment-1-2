@@ -13,6 +13,8 @@ const mongoose = require('mongoose');
 const productGroupSchema = new mongoose.Schema({
   /** Human-readable category name (e.g. "Laptops"). */
   name:         { type: String },
+  /** Optional description of this product group. */
+  description:  { type: String, default: '' },
   /** Photo URLs (populated by the photo service when uploads are enabled). */
   imageUrl:     { type: String },
   thumbnailUrl: { type: String },
