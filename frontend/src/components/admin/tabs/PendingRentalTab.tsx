@@ -7,6 +7,8 @@ import EmptyState from '../../ui/EmptyState';
 import InlineErrorBanner from '../../ui/InlineErrorBanner';
 import GroupedCard from '../../ui/GroupedCard';
 import AssetRow from '../../ui/AssetRow';
+import ThumbnailImage from '../../ui/ThumbnailImage';
+import ImageLightbox from '../../ui/ImageLightbox';
 
 interface PendingDeny {
   ids: string[];
@@ -21,6 +23,7 @@ const PendingRentalTab = ({
   const [submitting, setSubmitting]   = useState(false);
   const [apiError,   setApiError]     = useState('');
   const [pendingDeny, setPendingDeny] = useState<PendingDeny | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const pending = assets.filter(a => a.status === 'Pending Rental');
 
@@ -161,6 +164,11 @@ const PendingRentalTab = ({
                         {typeAssets.map(asset => (
                           <AssetRow key={asset.id}>
                             <div className="flex items-center flex-wrap gap-2">
+                              <ThumbnailImage
+                                thumbnailUrl={asset.thumbnailUrl}
+                                imageUrl={asset.imageUrl}
+                                onClick={() => setLightboxUrl(asset.imageUrl ?? null)}
+                              />
                               <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
                               {asset.returnDate && (
                                 <span className="flex items-center gap-1 text-xs text-brand-subtle bg-brand-dim/40 border border-brand/20 px-2 py-0.5 rounded-full">
@@ -208,6 +216,8 @@ const PendingRentalTab = ({
         onConfirm={handleDenyConfirmed}
         onCancel={() => setPendingDeny(null)}
       />
+
+      <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </>
   );
 };

@@ -6,6 +6,8 @@ import EmptyState from '../../ui/EmptyState';
 import InlineErrorBanner from '../../ui/InlineErrorBanner';
 import GroupedCard from '../../ui/GroupedCard';
 import AssetRow from '../../ui/AssetRow';
+import ThumbnailImage from '../../ui/ThumbnailImage';
+import ImageLightbox from '../../ui/ImageLightbox';
 
 /**
  * Shows all assets currently rented by the authenticated customer, grouped by
@@ -16,6 +18,7 @@ import AssetRow from '../../ui/AssetRow';
 const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }: CustomerTabProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [apiError,   setApiError]   = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const myRentals = assets.filter(
     a => a.status === 'Rented' && a.rentedByUserId === currentUserId,
@@ -83,7 +86,14 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }
                     <div className="space-y-2">
                       {typeAssets.map(asset => (
                         <AssetRow key={asset.id}>
-                          <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <ThumbnailImage
+                              thumbnailUrl={asset.thumbnailUrl}
+                              imageUrl={asset.imageUrl}
+                              onClick={() => setLightboxUrl(asset.imageUrl ?? null)}
+                            />
+                            <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
+                          </div>
                           <button
                             onClick={() => handleSubmitReturn([asset.id])}
                             disabled={submitting}
@@ -104,6 +114,8 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }
           );
         })}
       </div>
+
+      <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </>
   );
 };

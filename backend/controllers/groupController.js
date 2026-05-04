@@ -8,6 +8,7 @@
 
 const ProductGroup = require('../models/ProductGroup');
 const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
+const photoService = require('../services/photo/PhotoService');
 const { ValidationError, NotFoundError } = require('../services/errors/AppError');
 
 /**
@@ -40,8 +41,8 @@ const createGroup = async (req, res) => {
  * DELETE /api/groups/:id
  * Builds the full inventory tree rooted at this group via InventoryTreeBuilder,
  * then calls delete() to recursively remove all child AssetTypes and Assets
- * before removing the group itself. Passes null as the storageStrategy so
- * photo file deletion is skipped (placeholder for the future photo plan).
+ * before removing the group itself. Passes the PhotoService's storageStrategy
+ * so any photo files are cleaned up from disk during the cascading delete.
  *
  * @param {import('express').Request}  req - params: { id: string }
  * @param {import('express').Response} res - { success: true } or 404 if not found
@@ -49,7 +50,7 @@ const createGroup = async (req, res) => {
 const deleteGroup = async (req, res) => {
   const root = await InventoryTreeBuilder.fromGroupId(req.params.id);
   if (!root) throw new NotFoundError('Group not found');
-  await root.delete(null);
+  await root.delete(photoService.storageStrategy);
   res.json({ success: true });
 };
 

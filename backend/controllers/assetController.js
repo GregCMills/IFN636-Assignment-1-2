@@ -4,6 +4,7 @@ const auth = require('../services/auth/ClerkAuthAdapter');
 const InventoryTreeBuilder = require('../services/inventory/InventoryTreeBuilder');
 const AssetStateMachine = require('../services/asset-states/AssetStateMachine');
 const { AdminAuthoriser, CustomerAuthoriser } = require('../services/asset-states/TransitionAuthoriser');
+const photoService = require('../services/photo/PhotoService');
 const { ValidationError, NotFoundError, AuthorisationError, AppError } = require('../services/errors/AppError');
 
 // Destructure status constants for readability and to eliminate hardcoded strings
@@ -51,8 +52,8 @@ const createAsset = async (req, res) => {
 /**
  * DELETE /api/assets/:id
  * Builds a leaf node via InventoryTreeBuilder, then calls delete() to
- * remove the asset from the database. Passes null as the storageStrategy
- * so photo file deletion is skipped (placeholder for the future photo plan).
+ * remove the asset from the database. Passes the PhotoService's storageStrategy
+ * so any photo files are cleaned up from disk.
  *
  * @param {import('express').Request}  req - params: { id: string }
  * @param {import('express').Response} res - { success: true } or 404 if not found
@@ -60,7 +61,7 @@ const createAsset = async (req, res) => {
 const deleteAsset = async (req, res) => {
   const root = await InventoryTreeBuilder.fromAssetId(req.params.id);
   if (!root) throw new NotFoundError('Asset not found');
-  await root.delete(null);
+  await root.delete(photoService.storageStrategy);
   res.json({ success: true });
 };
 

@@ -5,13 +5,15 @@
  * restricted to admins.  Status transitions (bulk-status, request-rental)
  * have additional role-based rules enforced in the controller.
  *
- *   GET    /api/assets              — list all assets with user enrichment
- *   POST   /api/assets              — create a single asset (admin)
- *   POST   /api/assets/batch        — create multiple assets at once (admin)
- *   PATCH  /api/assets/bulk-status  — update status for one or more assets
+ *   GET    /api/assets               — list all assets with user enrichment
+ *   POST   /api/assets               — create a single asset (admin)
+ *   POST   /api/assets/batch         — create multiple assets at once (admin)
+ *   PATCH  /api/assets/bulk-status   — update status for one or more assets
  *   POST   /api/assets/request-rental — request rental (authenticated users)
- *   POST   /api/assets/reset-seed   — wipe and re-seed all data (admin)
- *   DELETE /api/assets/:id          — delete an asset (admin)
+ *   POST   /api/assets/reset-seed    — wipe and re-seed all data (admin)
+ *   POST   /api/assets/:id/photo     — upload a photo for an asset (admin)
+ *   DELETE /api/assets/:id/photo     — delete an asset's photo (admin)
+ *   DELETE /api/assets/:id           — delete an asset (admin)
  */
 
 const express = require('express');
@@ -19,6 +21,8 @@ const auth = require('../services/auth/ClerkAuthAdapter');
 const {
   listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus, requestRental, resetSeedAssets,
 } = require('../controllers/assetController');
+const { uploadPhoto, deletePhoto    } = require('../controllers/photoController');
+const { upload, validateFileType   } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
 
@@ -29,6 +33,8 @@ router.post('/batch',           auth.requireAuth(), auth.adminOnly(), batchCreat
 router.patch('/bulk-status',    auth.requireAuth(),              bulkUpdateStatus);
 router.post('/request-rental',  auth.requireAuth(),              requestRental);
 router.post('/reset-seed',      auth.requireAuth(), auth.adminOnly(), resetSeedAssets);
+router.post('/:id/photo',       auth.requireAuth(), auth.adminOnly(), upload.single('photo'), validateFileType, uploadPhoto('asset'));
+router.delete('/:id/photo',     auth.requireAuth(), auth.adminOnly(), deletePhoto('asset'));
 router.delete('/:id',           auth.requireAuth(), auth.adminOnly(), deleteAsset);
 
 module.exports = router;

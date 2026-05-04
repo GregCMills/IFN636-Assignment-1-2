@@ -31,3 +31,4 @@ yarn-error.log*
 *.notes.md
 *.plan.md
 *.report.md
+uploads/

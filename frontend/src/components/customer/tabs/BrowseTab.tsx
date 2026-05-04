@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { ShoppingCart, Trash2, X, Calendar } from 'lucide-react';
 import type { CustomerTabProps } from '../../../types/assets';
+import ThumbnailImage from '../../ui/ThumbnailImage';
+import ImageLightbox from '../../ui/ImageLightbox';
 
 type Cart = Record<string, number>; // typeId → quantity
 
@@ -10,6 +12,7 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
   const [returnDate, setReturnDate]   = useState('');
   const [cartError, setCartError]     = useState('');
   const [submitting, setSubmitting]   = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // Count available units per asset type
   const availableCounts = useMemo(() => {
@@ -82,11 +85,19 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
                   const inCart    = cart[type.id] ?? 0;
                   return (
                     <div key={type.id} className="card p-5 flex flex-col gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-text-secondary">{type.name}</h3>
-                        <p className={`text-sm mt-0.5 ${available > 0 ? 'text-status-success' : 'text-text-subtle'}`}>
-                          {available > 0 ? `${available} available` : 'None available'}
-                        </p>
+                      <div className="flex items-start gap-3">
+                        <ThumbnailImage
+                          thumbnailUrl={type.thumbnailUrl}
+                          imageUrl={type.imageUrl}
+                          onClick={() => setLightboxUrl(type.imageUrl ?? null)}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <h3 className="text-base font-bold text-text-secondary">{type.name}</h3>
+                          <p className={`text-sm mt-0.5 ${available > 0 ? 'text-status-success' : 'text-text-subtle'}`}>
+                            {available > 0 ? `${available} available` : 'None available'}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-brand-light">
@@ -224,6 +235,8 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
           </div>
         </div>
       )}
+
+      <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </>
   );
 };

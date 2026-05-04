@@ -6,6 +6,8 @@ import EmptyState from '../../ui/EmptyState';
 import InlineErrorBanner from '../../ui/InlineErrorBanner';
 import GroupedCard from '../../ui/GroupedCard';
 import AssetRow from '../../ui/AssetRow';
+import ThumbnailImage from '../../ui/ThumbnailImage';
+import ImageLightbox from '../../ui/ImageLightbox';
 
 /**
  * Displays all assets currently in Maintenance status, grouped first by
@@ -24,6 +26,7 @@ const MaintenanceTab = ({
 }: AdminTabProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [apiError,   setApiError]   = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const maintenance = assets.filter(a => a.status === 'Maintenance');
 
@@ -138,7 +141,14 @@ const MaintenanceTab = ({
                       <div className="space-y-2">
                         {typeAssets.map(asset => (
                           <AssetRow key={asset.id}>
-                            <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <ThumbnailImage
+                                thumbnailUrl={asset.thumbnailUrl}
+                                imageUrl={asset.imageUrl}
+                                onClick={() => setLightboxUrl(asset.imageUrl ?? null)}
+                              />
+                              <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
+                            </div>
                             <button
                               onClick={() => handleMarkAvailable([asset.id])}
                               disabled={submitting}
@@ -158,6 +168,8 @@ const MaintenanceTab = ({
           );
         })}
       </div>
+
+      <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </>
   );
 };
