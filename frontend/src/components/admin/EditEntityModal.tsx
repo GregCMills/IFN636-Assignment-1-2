@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Trash2, Loader2, ImageIcon, Undo2 } from 'lucide-react';
+import { X, Upload, Trash2, ImageIcon, Undo2 } from 'lucide-react';
 
 interface EditEntityModalProps {
   isOpen: boolean;

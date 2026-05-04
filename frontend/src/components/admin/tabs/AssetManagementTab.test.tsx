@@ -34,7 +34,6 @@ describe('AssetManagementTab — edit buttons', () => {
   it('shows Pencil (edit) button on group cards on hover', () => {
     render(<AssetManagementTab {...makeProps()} />);
     // Pencil buttons should be present in the DOM (opacity-0 on hover, but rendered)
-    const pencilButtons = screen.getAllByTitle(/Edit/);
     // Should have Edit group titles
     const groupEditBtns = screen.getAllByTitle('Edit group');
     expect(groupEditBtns.length).toBeGreaterThanOrEqual(2);

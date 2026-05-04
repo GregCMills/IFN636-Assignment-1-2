@@ -24,6 +24,7 @@ const makeProps = (overrides: Partial<AdminTabProps> = {}): AdminTabProps => ({
   deleteAsset:         vi.fn().mockResolvedValue(undefined),
   uploadPhoto:         vi.fn().mockResolvedValue(undefined),
   deletePhoto:         vi.fn().mockResolvedValue(undefined),
+  updateEntity:        vi.fn().mockResolvedValue({ name: 'X' }),
   ...overrides,
 });
 
