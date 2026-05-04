@@ -20,16 +20,16 @@ const ImageLightbox = ({ imageUrl, onClose }: ImageLightboxProps) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="relative max-w-4xl max-h-[90vh] w-full">
         <button
           onClick={onClose}
-          className="absolute -top-10 right-0 text-text-muted hover:text-text-primary transition p-1"
+          className="absolute top-4 right-4 z-[70] p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-all shrink-0 shadow-lg"
           aria-label="Close lightbox"
         >
-          <X size={28} />
+          <X size={18} />
         </button>
         <img
           src={imageUrl}

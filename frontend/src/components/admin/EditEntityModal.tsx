@@ -93,7 +93,14 @@ const EditEntityModal = ({
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-surface-raised border border-border-default w-full max-w-3xl max-h-[calc(100vh-2rem)] rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
+      <div className="bg-surface-raised border border-border-default w-full max-w-3xl max-h-[calc(100vh-2rem)] rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
+        <button
+          onClick={onClose}
+          disabled={busy}
+          className="absolute top-4 right-4 z-[10] p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-all shrink-0 shadow-lg"
+        >
+          <X size={18} />
+        </button>
 
         {/* ── Left side: Full image ─────────────────────────────── */}
         <div className="relative w-full md:w-5/12 bg-surface-elevated flex items-center justify-center group overflow-hidden border-r border-border-default/50 min-h-[260px] md:min-h-0">
@@ -159,9 +166,9 @@ const EditEntityModal = ({
         </div>
 
         {/* ── Right side: Form ──────────────────────────────────── */}
-        <div className="flex-1 p-6 md:p-8 flex flex-col">
+        <div className="flex-1 p-4 md:p-4 flex flex-col relative">
           {/* Header */}
-          <div className="flex items-start justify-between mb-8">
+          <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">
                 Edit {entityLabel}
@@ -170,13 +177,6 @@ const EditEntityModal = ({
                 Update {entityLabel.toLowerCase()} details and imagery.
               </p>
             </div>
-            <button
-              onClick={onClose}
-              disabled={busy}
-              className="p-2 text-text-muted hover:text-text-primary hover:bg-surface-elevated rounded-full transition-colors shrink-0"
-            >
-              <X size={20} />
-            </button>
           </div>
 
           <input
@@ -189,30 +189,30 @@ const EditEntityModal = ({
           />
 
           {/* Fields */}
-          <div className="space-y-5 flex-1">
+          <div className="space-y-4 flex-1">
             {/* Name */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-text-label uppercase tracking-widest ml-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-text-label uppercase tracking-widest ml-1">
                 {entityLabel} Name
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="input-base text-sm py-3"
+                className="input-base text-sm py-2"
                 placeholder={`e.g. ${entityLabel}`}
               />
             </div>
 
             {/* Description */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-text-label uppercase tracking-widest ml-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-text-label uppercase tracking-widest ml-1">
                 Description
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="input-base text-sm resize-none py-3"
+                className="input-base text-sm resize-none py-2"
                 rows={4}
                 placeholder={`Describe this ${entityLabel.toLowerCase()}...`}
               />
@@ -234,18 +234,18 @@ const EditEntityModal = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 mt-8 pt-2">
+          <div className="flex items-center justify-end gap-3 mt-4 pt-2">
             <button
               onClick={onClose}
               disabled={busy}
-              className="px-5 py-2.5 text-text-muted hover:text-text-primary font-medium transition-colors"
+              className="px-4 py-2 text-text-muted hover:text-text-primary font-medium transition-colors text-sm"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={busy || !name.trim()}
-              className="btn-primary px-6 py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-primary px-5 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? 'Saving…' : 'Save Changes'}
             </button>
