@@ -7,6 +7,7 @@ import AssetStateMachine from '../services/asset-states/AssetStateMachine';
 import { AdminAuthoriser, CustomerAuthoriser } from '../services/asset-states/TransitionAuthoriser';
 import photoService from '../services/photo/PhotoService';
 import { ValidationError, NotFoundError, AuthorisationError, AppError } from '../services/errors/AppError';
+import { SEED_IMAGES_ROOT } from '../config/paths';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
 import fs from 'fs';
@@ -187,8 +188,11 @@ export const batchCreateAssets = async (req: Request, res: Response) => {
  * Helper to process a local seed image if it exists.
  */
 const processSeedImage = async (entityType: 'group' | 'type' | 'asset', entityId: string, filename: string) => {
-  const seedImagePath = path.join(__dirname, '../data/images', filename);
-  if (!fs.existsSync(seedImagePath)) return;
+  const seedImagePath = path.join(SEED_IMAGES_ROOT, filename);
+  if (!fs.existsSync(seedImagePath)) {
+    console.warn(`Seed image not found: ${seedImagePath}`);
+    return;
+  }
 
   const buffer = fs.readFileSync(seedImagePath);
   const file = {
