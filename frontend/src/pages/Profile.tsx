@@ -118,8 +118,7 @@ const Profile = () => {
             <div className="min-w-0">
               <p className="font-medium text-text-primary text-sm">Reset Assets to Seed Data</p>
               <p className="text-text-subtle text-xs mt-1">
-                Deletes all asset records and replaces them with the default seed data.
-                Product groups and types are not affected.
+                Deletes all asset records, product types, and groups, and replaces them with the default seed data.
               </p>
             </div>
             <button
@@ -140,8 +139,8 @@ const Profile = () => {
       <ConfirmModal
         isOpen={confirming}
         title="Reset all assets?"
-        message="This will permanently delete every asset record and replace them with the seed data."
-        detail="Product groups and types will not be affected."
+        message="This will permanently delete every asset, product type, and group, and replace them with the seed data."
+        detail="This action cannot be undone."
         confirmLabel="Yes, reset assets"
         onConfirm={() => { setConfirming(false); handleResetAssets(); }}
         onCancel={() => setConfirming(false)}

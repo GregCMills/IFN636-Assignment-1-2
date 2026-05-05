@@ -17,16 +17,17 @@ implementation.
 
 | # | Pattern | Category | Status | Key Files |
 |---|---------|----------|--------|-----------|
-| 1 | [Singleton](#1-singleton) | Creational | Confirmed | `server.js`, `models/*.js`, `config/db.js`, `services/auth/ClerkAuthAdapter.js` |
-| 2 | [Facade](#2-facade) | Structural | Confirmed | `server.js`, `controllers/assetController.js` |
+| 1 | [Singleton](#1-singleton) | Creational | Confirmed | `server.js`, `models/*.js`, `config/db.js`, `services/auth/ClerkAuthAdapter.js`, `services/photo/PhotoService.js` |
+| 2 | [Facade](#2-facade) | Structural | Confirmed | `server.js`, `controllers/assetController.js`, `services/photo/PhotoService.js` |
 | 3 | [Adapter](#3-adapter) | Structural | Confirmed | `services/auth/AuthAdapter.js`, `services/auth/ClerkAuthAdapter.js`, `models/*.js` |
 | 4 | [Decorator](#4-decorator) | Structural | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js`, `server.js` |
-| 5 | [Chain of Responsibility](#5-chain-of-responsibility) | Behavioral | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js`, `services/errors/AppError.js`, `server.js` |
+| 5 | [Chain of Responsibility](#5-chain-of-responsibility) | Behavioral | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js`, `services/errors/AppError.js`, `middleware/uploadMiddleware.js`, `server.js` |
 | 6 | [Template Method](#6-template-method) | Behavioral | Confirmed | `services/asset-states/AssetState.js`, `services/inventory/InventoryComponent.js` |
 | 7 | [State](#7-state) | Behavioral | Confirmed | `services/asset-states/*.js` |
-| 8 | [Strategy](#8-strategy) | Behavioral | Confirmed | `services/asset-states/TransitionAuthoriser.js` |
+| 8 | [Strategy](#8-strategy) | Behavioral | Confirmed | `services/asset-states/TransitionAuthoriser.js`, `services/photo/storage/*.js` |
 | 9 | [Composite](#9-composite) | Structural | Confirmed | `services/inventory/*.js` |
-| 10 | [Factory Method](#10-factory-method) | Creational | Partial | `controllers/assetController.js` |
+| 10 | [Factory Method](#10-factory-method) | Creational | Confirmed | `services/photo/handlers/*.js` |
+| 11 | [Builder](#11-builder) | Creational | Confirmed | `services/photo/ProcessedPhotoBuilder.js`, `services/photo/PhotoProcessingDirector.js` |
 
 ---
 
@@ -105,6 +106,17 @@ const STATE_MAP = {
 The five concrete state objects are instantiated once inside `AssetStateMachine`
 and shared across all requests.
 
+#### 1f. The photo service (`services/photo/PhotoService.js`)
+
+```js
+module.exports = new PhotoService();
+```
+
+The PhotoService is exported as a singleton instance (same pattern as
+`ClerkAuthAdapter`). Every module that does `require('../services/photo/PhotoService')`
+receives the same object — controllers, route files, and the Composite delete
+method all share one `PhotoService` (and therefore one `StorageStrategy`).
+
 ### Evaluation
 
 Confirmed. The Singleton is achieved through Node.js module caching rather than
@@ -165,11 +177,38 @@ Controller functions simply call `await enrichWithClerkUsers(assets)` without
 knowing anything about the underlying auth provider, its API, or its data
 format.
 
+#### 2c. Photo service (`services/photo/PhotoService.js`)
+
+The `PhotoService` is a facade over the photo subsystem. It exposes three
+methods — `uploadPhoto()`, `deletePhoto()`, and `getPhotoUrl()` — and hides
+behind them the complexity of:
+
+- **Storage strategy** — file system operations (save/delete/getUrl)
+- **Image processing** — resizing and thumbnail generation via `sharp`
+- **Entity handlers** — Mongoose model queries for photo URLs per entity type
+
+Controllers call `photoService.uploadPhoto('group', id, req.file)` without
+knowing how files are stored, how images are processed, or which Mongoose
+model is being updated.
+
+#### 2d. Entity service (`services/entity/EntityService.js`)
+
+The `EntityService` is a facade over entity data mutations. It exposes a
+single method — `updateEntity()` — and hides behind it the complexity of:
+
+- **Model resolution** — mapping entity type strings to Mongoose models
+- **Partial updates** — only modifying fields present in the request
+
+Controllers call `entityService.updateEntity('group', id, { name, description })`
+without knowing which Mongoose model is being queried or how the update is
+persisted.
+
 ### Evaluation
 
-Confirmed. `server.js` keeps infrastructure wiring in one place, and
-`enrichWithClerkUsers` cleanly isolates the enrichment concern from business
-logic.
+Confirmed. Four independent facades coexist: `server.js` (infrastructure),
+`enrichWithClerkUsers` (user data), `PhotoService` (photo operations), and
+`EntityService` (entity data mutations). Each hides a different subsystem
+behind a simple interface.
 
 ---
 
@@ -203,7 +242,8 @@ assetSchema.set('toJSON', {
 
 The same pattern appears in `AssetType.js` and `ProductGroup.js`. Without these
 adapters, the frontend would receive raw `ObjectId` objects and MongoDB-internal
-fields.
+fields. Fields like `name` and the newly-added `description` pass through
+unchanged because they are plain strings.
 
 #### 3b. Auth adapter (`services/auth/`)
 
@@ -410,6 +450,54 @@ This pattern separates HTTP concerns from business logic. Controllers express
 error conditions declaratively (`throw new NotFoundError(...)`) and the global
 handler translates error types into HTTP responses in one place.
 
+Adding `PATCH /:id` routes for entity name/description updates extends the
+same chain pattern — the new routes follow the identical `auth.requireAuth()`,
+`auth.adminOnly()` sequence before reaching the controller:
+
+```js
+router.patch('/:id', auth.requireAuth(), auth.adminOnly(), updateEntity('group'));
+```
+
+The full chain for an entity update:
+
+```
+auth.requireAuth() → auth.adminOnly() → updateEntity
+```
+
+1. `auth.requireAuth()` — checks authentication (401 if unauthenticated).
+2. `auth.adminOnly()` — checks admin role (403 if not admin).
+3. `updateEntity('group')` — the terminal handler: validates input and updates
+   the entity via PhotoService.
+
+All three entity types (groups, types, assets) share the same chain structure,
+differing only in the entity type string passed to the controller factory.
+
+#### 5d. Upload validation chain (`middleware/uploadMiddleware.js`)
+
+Photo upload routes add two new links to the middleware chain:
+
+```js
+router.post('/:id/photo', auth.requireAuth(), auth.adminOnly(),
+            upload.single('photo'), validateFileType, uploadPhoto('group'));
+```
+
+The full chain for a photo upload:
+
+```
+auth.requireAuth() → auth.adminOnly() → multer.single('photo') → validateFileType → uploadPhoto
+```
+
+1. `auth.requireAuth()` — checks authentication (401 if unauthenticated).
+2. `auth.adminOnly()` — checks admin role (403 if not admin).
+3. `multer.single('photo')` — parses multipart data; enforces 5MB file size
+   limit. Multer errors (e.g. file too large) are caught by Express 5 and
+   forwarded to the global error handler.
+4. `validateFileType` — checks MIME type is `image/jpeg`, `image/png`, or
+   `image/webp`. Throws `ValidationError` (400) if not. This matches the project
+   convention of throwing typed `AppError` subclasses rather than calling
+   `res.status().json()` directly.
+5. `uploadPhoto('group')` — the terminal handler: processes and saves the photo.
+
 ### Relationship to Decorator
 
 Express middleware simultaneously implements both Decorator and Chain of
@@ -509,10 +597,8 @@ skip for leaves) and call the primitive operations `getChildren()` and
 | `AssetTypeComponent` | `AssetType.findByIdAndDelete(this.doc._id)` |
 | `AssetComponent` | `Asset.findByIdAndDelete(this.doc._id)` |
 
-The three subclasses previously each had ~30 lines of duplicated `getPhotoPaths()`
-and `delete()` code. The Template Method refactor eliminated that duplication by
-moving the common algorithm into the base class, leaving each subclass with only
-~6 lines of unique code (constructor + accessors + `_deleteSelf()`).
+Each subclass has only ~6 lines of unique code (constructor + accessors +
+`_deleteSelf()`). The common algorithm lives in the base class.
 
 Similarly, `getChildren()` returns an empty array by default, so `AssetComponent`
 (the leaf) inherits the full Template Method behaviour without overriding
@@ -722,11 +808,41 @@ The Strategy and State patterns work together in a three-phase validation:
 
 All three must pass for the transition to be permitted.
 
+#### 8d. Photo storage strategy (`services/photo/storage/*.js`)
+
+A second, independent Strategy instance handles file storage for photos:
+
+```js
+// Strategy interface
+class StorageStrategy {
+  async save(directory, filename, buffer) { throw new Error('Not implemented'); }
+  async delete(relativePath)              { throw new Error('Not implemented'); }
+  getUrl(relativePath)                    { throw new Error('Not implemented'); }
+}
+```
+
+| Class | `save()` | `delete()` | `getUrl()` |
+|-------|----------|------------|------------|
+| `LocalStorageStrategy` | Writes to `backend/uploads/<dir>/<file>` | Deletes from local filesystem | Returns URL path unchanged |
+
+The `PhotoService` (Facade) holds a reference to a `StorageStrategy` instance
+and delegates all file I/O through it. The strategy is selected once at
+construction time based on environment config (currently always `LocalStorageStrategy`,
+but could be swapped for S3 or Cloudinary without changing any business logic).
+
+The same `StorageStrategy` instance is also passed to the Composite's
+`delete(storageStrategy)` method. The `InventoryComponent._deleteOwnPhotos()`
+helper calls `storageStrategy.delete(url)` for each photo file — the Composite
+doesn't know or care which backend it's deleting from.
+
+In tests, a mock strategy can be substituted to avoid filesystem side-effects.
+
 ### Evaluation
 
-Confirmed. Textbook Strategy pattern: a family of interchangeable algorithms
-(AdminAuthoriser, CustomerAuthoriser) behind a common interface, selected at
-runtime by the client.
+Confirmed. Two independent Strategy pattern instances coexist in the codebase:
+`TransitionAuthoriser` for state transitions and `StorageStrategy` for file
+storage. Both follow the textbook structure: a family of interchangeable
+algorithms behind a common interface, selected at runtime by the client.
 
 ---
 
@@ -857,53 +973,141 @@ Confirmed. The implementation satisfies all four textbook requirements:
 > creating objects in a superclass, but allows subclasses to alter the type of
 > objects that will be created.
 
-### What exists
+### How it appears in this codebase
 
-Two controller functions create domain objects dynamically:
+#### 10a. Entity photo handlers (`services/photo/handlers/*.js`)
 
-#### 10a. `batchCreateAssets` (`controllers/assetController.js`)
-
-```js
-const docs = names.map(name => ({ typeId, name: name.trim(), status: 'Available' }));
-const created = await Asset.insertMany(docs);
-```
-
-#### 10b. `resetSeedAssets` (`controllers/assetController.js`)
+The photo subsystem introduces a textbook Factory Method structure:
 
 ```js
-const typeDocs = SEED_TYPES.map(t => ({ groupId: groupNameToId[t.groupName], name: t.name }));
-const createdTypes = await AssetType.insertMany(typeDocs);
+// Creator (base class)
+class EntityPhotoHandler {
+  get model()          { throw new Error('Not implemented'); }
+  get subdirectory()   { throw new Error('Not implemented'); }
+  async findById(id)   { return this.model.findById(id); }
+  async updatePhoto(id, imageUrl, thumbnailUrl) { /* ... */ }
+  async getPhotoPaths(id) { /* ... */ }
+  async deleteEntityPhotoFiles(id, storageStrategy) { /* ... */ }
+}
 ```
 
-### Why this is only a partial match
+Three concrete subclasses override only the `model` and `subdirectory` getters:
 
-The canonical Factory Method pattern requires:
+|| Subclass | `model` | `subdirectory` | File |
+||---|---------|---------------|------|
+|| `GroupPhotoHandler` | `ProductGroup` | `'groups'` | `handlers/GroupPhotoHandler.js` |
+|| `TypePhotoHandler` | `AssetType` | `'types'` | `handlers/TypePhotoHandler.js` |
+|| `AssetPhotoHandler` | `Asset` | `'assets'` | `handlers/AssetPhotoHandler.js` |
 
-1. A **Creator** class with a factory method that returns a Product interface.
-2. **Concrete Creators** (subclasses) that override the factory method to
-   return different Concrete Products.
-3. Client code works with products through the Product interface, not knowing
-   which concrete class it received.
+The factory (`PhotoHandlerFactory`) creates the correct handler based on a type
+string:
 
-The codebase's creation logic:
+```js
+class PhotoHandlerFactory {
+  static create(entityType: 'group' | 'type' | 'asset') {
+    switch (entityType) {
+      case 'group': return new GroupPhotoHandler();
+      case 'type':  return new TypePhotoHandler();
+      case 'asset': return new AssetPhotoHandler();
+    }
+  }
+}
+```
 
-- Uses simple `Model.create()` and `Model.insertMany()` calls — there are no
-  creator subclasses and no polymorphic product interfaces.
-- All created objects are of the same type (e.g. `Asset`) — there is no
-  variation in the product type.
-- `resetSeedAssets` is closer to a **data seeder** than a factory method — it
-  assembles a complex object graph from predefined data.
+Client code (the `PhotoService` facade) works through the base `EntityPhotoHandler`
+interface without knowing which concrete handler it received:
 
-### What would be needed for a full implementation
+```js
+const handler = PhotoHandlerFactory.create(entityType);
+await handler.deleteEntityPhotoFiles(entityId, this.storageStrategy);
+await handler.updatePhoto(entityId, imageUrl, thumbnailUrl);
+```
 
-The Factory Method pattern would be applicable if assets could be of different
-subtypes (e.g. `LaptopAsset`, `ProjectorAsset`) with different fields and
-default behaviours, and a base `AssetFactory` class had a `createAsset()`
-method that each resource type overrode.
+### Factory Method structure
 
-For the current codebase, where all assets share the same schema and the
-creation logic is straightforward, the direct `Model.create()` approach is
-simpler and more appropriate.
+This satisfies all three textbook requirements:
+
+1. A **Creator** class (`EntityPhotoHandler`) with a common interface.
+2. **Concrete Creators** (three subclasses) that vary the model, directory, and
+   query logic.
+3. Client code (`PhotoService`) works with products through the base interface,
+   not knowing which concrete class it received.
+
+---
+
+## 11. Builder
+
+**Category:** Creational
+
+**Refactoring.Guru definition:**
+> Builder is a creational design pattern that lets you construct complex
+> objects step by step.
+
+### How it appears in this codebase
+
+Photo processing involves multiple ordered steps (set original, resize, generate
+thumbnail, build result). The Builder pattern captures this multi-step
+construction, and a Director defines the standard processing sequence.
+
+#### 11a. The Builder (`ProcessedPhotoBuilder`)
+
+```js
+class ProcessedPhotoBuilder {
+  setOriginal(buffer, mimetype)   // stores raw upload data
+  async resize(maxWidth, maxHeight)   // resizes with sharp
+  async generateThumbnail(size)       // creates square thumbnail
+  async getResult()                   // returns { originalBuffer, thumbnailBuffer, width, height, mimetype }
+}
+```
+
+Each step is isolated and testable independently. The builder accumulates state
+through method calls and produces the final product via `getResult()`.
+
+#### 11b. The Director (`PhotoProcessingDirector`)
+
+```js
+class PhotoProcessingDirector {
+  async process(fileBuffer, mimetype) {
+    const builder = new ProcessedPhotoBuilder();
+    builder.setOriginal(fileBuffer, mimetype);
+    await builder.resize(800, 800);
+    await builder.generateThumbnail(200);
+    return builder.getResult();
+  }
+}
+```
+
+The Director knows the **order** of steps (resize to 800×800, then 200×200
+thumbnail) but doesn't know the implementation details of each step — those are
+encapsulated in the Builder.
+
+#### 11c. Why Builder + Director
+
+- The Builder allows future variations without changing the Director (e.g. a
+  different Director could skip thumbnails for small icons).
+- The Builder can be used standalone for custom processing sequences.
+- Each step is isolated and testable independently.
+
+### Product
+
+```js
+{
+  originalBuffer:  <Buffer>,    // resized original
+  thumbnailBuffer: <Buffer>,    // thumbnail image
+  width:           800,         // final width
+  height:          600,         // final height
+  mimetype:        'image/jpeg',
+}
+```
+
+### Evaluation
+
+Confirmed. Textbook Builder implementation: the Builder constructs a complex
+product step by step, the Director defines the standard sequence, and the
+`PhotoService` (client) calls the Director without knowing the construction
+details. The pattern is a clean fit for image processing pipelines where each
+step (resize, thumbnail, format conversion) is a discrete operation on
+accumulated state.
 
 ---
 
@@ -947,21 +1151,60 @@ This cleanly separates HTTP concerns (status codes) from business logic
 No pattern conflicts with another. Controllers use Adapter + Composite + State +
 Strategy in a single request flow without any pattern fighting for control.
 
+### PhotoService — multiple patterns in every operation
+
+A single `uploadPhoto()` call coordinates five patterns:
+
+```mermaid
+flowchart TD
+    Client[Controller] -->|call| Facade[PhotoService Facade]
+    Facade -->|"create(entityType)"| Factory[PhotoHandlerFactory Factory Method]
+    Facade -->|"process(buffer, mimetype)"| Director[PhotoProcessingDirector Director]
+    Director -->|build| Builder[ProcessedPhotoBuilder Builder]
+    Facade -->|"save(dir, name, buf)"| Strategy[LocalStorageStrategy Strategy]
+    Factory -->|returns| Handler[EntityPhotoHandler]
+    Handler -->|"updatePhoto(id, url)"| Model[Mongoose Model]
+```
+
+1. **Facade** — `PhotoService` presents a simple 3-method interface.
+2. **Factory Method** — `PhotoHandlerFactory.create()` returns the right handler.
+3. **Builder** — `ProcessedPhotoBuilder` constructs the processed image step by
+   step, orchestrated by `PhotoProcessingDirector` (Director).
+4. **Strategy** — `LocalStorageStrategy` handles file I/O; swappable for S3 etc.
+5. **Singleton** — `PhotoService` is a singleton; all modules share one storage
+   strategy instance.
+
+The `EntityService.updateEntity()` method is an independent Facade that
+handles entity data mutations (name, description) through a simple model map.
+It does not use the Builder or Strategy patterns — it only needs
+`findById` + `save()`.
+
+### Composite + Strategy — cascading photo cleanup
+
+The Composite's `delete(storageStrategy)` Template Method delegates photo
+deletion to the `StorageStrategy`. The Composite doesn't know about
+filesystem paths, S3 buckets, or Cloudinary URLs — it calls
+`storageStrategy.delete(url)` and the strategy handles the rest.
+
 ---
 
 ## Verification
 
 | Pattern | Evidence |
 |---------|----------|
-| State | 30 dedicated unit tests (`test/state-pattern.test.js`). 1 integration test verifying state-machine-driven rental data clearing (`test/assets.test.js`). All 148 backend tests pass. |
-| Strategy | Dedicated unit tests covering `canTransition()` and `verifyOwnership()` in `test/state-pattern.test.js`. Customer/Admin role and ownership distinctions verified by integration tests in `test/assets.test.js`. |
+| State | 30 dedicated unit tests (`test/state-pattern.test.js`). 1 integration test verifying state-machine-driven rental data clearing (`test/assets.test.js`). |
+| Strategy | Virtual transition authoriser tests in `test/state-pattern.test.js`. LocalStorageStrategy verified by photo integration tests (`test/photo.test.js`). MockStrategy available for service-level testing. |
 | Adapter | 20 dedicated unit tests (`test/adapter.test.js`). Correctly handles Clerk v1 and v2 request shapes, normalises user objects, and degrades gracefully on API failures. |
-| Composite | 14 dedicated integration tests (`test/composite.test.js`). Template Method refactor eliminated ~50 lines of duplicated code; all 14 tests pass unchanged. |
-| Singleton | Verified by Node.js module caching — `require()` returns the same object. |
-| Facade | `server.js` is the single entry point for all consumers. |
+| Composite | 14 dedicated integration tests (`test/composite.test.js`). Template Method refactor eliminated ~50 lines of duplicated code; all 14 tests pass unchanged. Cascading photo deletion verified by integration tests. |
+| Singleton | Verified by Node.js module caching — `require()` returns the same object. PhotoService follows the same pattern as ClerkAuthAdapter. |
+| Facade | `server.js` (infrastructure), `enrichWithClerkUsers` (user data), `PhotoService` (photo operations), and `EntityService` (entity data mutations) — four independent facades. Verified by integration tests. |
 | Decorator | Middleware stack verified by route-level integration tests. |
-| Chain of Responsibility | Middleware chain verified by auth integration tests (401/403 responses). Error hierarchy extends the chain via the global error handler in `server.js`. |
-| Template Method | Verified by State pattern unit tests (each state class's `getValidTransitions()` override tested) and Composite integration tests (all subclasses inherit `getPhotoPaths()` and `delete()` from `InventoryComponent`). |
+| Chain of Responsibility | Middleware chain verified by auth integration tests (401/403 responses). Upload validation chain (multer + validateFileType) verified by photo tests (400 for invalid file types). |
+| Template Method | Verified by State pattern unit tests and Composite integration tests. |
+| Factory Method | PhotoHandlerFactory.create() returns the correct handler subclass for each entity type. Verified by integration tests via PhotoService. |
+| Builder | ProcessedPhotoBuilder and PhotoProcessingDirector verified by photo integration tests (correct resize + thumbnail dimensions). |
+| EntityService | `EntityService.updateEntity()` verified by the same 12 PATCH integration tests in `test/photo.test.js`. Uses a plain model map instead of the handler hierarchy. |
+| Controller | `photoController.js` exports `uploadPhoto` and `deletePhoto` as higher-order functions. `entityController.js` exports `updateEntity` following the same factory pattern. 12 dedicated integration tests cover all PATCH scenarios (200, 400, 404, 401, 403 for groups, types, and assets). |
 
 ---
 

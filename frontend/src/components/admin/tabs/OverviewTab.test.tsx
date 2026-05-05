@@ -29,6 +29,9 @@ const makeProps = (overrides: Partial<AdminTabProps> = {}): AdminTabProps => ({
   createAsset:         vi.fn().mockResolvedValue({ id: 'x', typeId: 't1', name: 'X', status: 'Available' as const }),
   createAssets:        vi.fn().mockResolvedValue([]),
   deleteAsset:         vi.fn().mockResolvedValue(undefined),
+  uploadPhoto:         vi.fn().mockResolvedValue(undefined),
+  deletePhoto:         vi.fn().mockResolvedValue(undefined),
+  updateEntity:        vi.fn().mockResolvedValue({ name: 'X' }),
   ...overrides,
 });
 
@@ -117,7 +120,7 @@ describe('OverviewTab — count display', () => {
       ],
     })} />);
     // MacBook Air M2 has 2 available
-    const macbookCard = screen.getByText('MacBook Air M2').closest('div');
+    const macbookCard = screen.getByText('MacBook Air M2').closest('.card');
     expect(macbookCard).toHaveTextContent('2');
   });
 
@@ -129,8 +132,8 @@ describe('OverviewTab — count display', () => {
         { id: 'a3', typeId: 't2', name: 'Unit 002', status: 'Available' },
       ],
     })} />);
-    const macbookCard = screen.getByText('MacBook Air M2').closest('div');
-    const dellCard    = screen.getByText('Dell XPS 15').closest('div');
+    const macbookCard = screen.getByText('MacBook Air M2').closest('.card');
+    const dellCard    = screen.getByText('Dell XPS 15').closest('.card');
     expect(macbookCard).toHaveTextContent('1');
     expect(dellCard).toHaveTextContent('2');
   });
@@ -143,7 +146,7 @@ describe('OverviewTab — count display', () => {
       ],
     })} />);
     // Default filter is Available, so MacBook Air M2 should show 0
-    const macbookCard = screen.getByText('MacBook Air M2').closest('div');
+    const macbookCard = screen.getByText('MacBook Air M2').closest('.card');
     expect(macbookCard).toHaveTextContent('0');
   });
 });
@@ -163,7 +166,7 @@ describe('OverviewTab — status filter interaction', () => {
 
     await user.selectOptions(screen.getByRole('combobox'), 'Rented');
 
-    const macbookCard = screen.getByText('MacBook Air M2').closest('div');
+    const macbookCard = screen.getByText('MacBook Air M2').closest('.card');
     expect(macbookCard).toHaveTextContent('2');
   });
 
@@ -178,7 +181,7 @@ describe('OverviewTab — status filter interaction', () => {
 
     await user.selectOptions(screen.getByRole('combobox'), 'Maintenance');
 
-    const sonyCard = screen.getByText('Sony A7III Camera').closest('div');
+    const sonyCard = screen.getByText('Sony A7III Camera').closest('.card');
     expect(sonyCard).toHaveTextContent('1');
   });
 

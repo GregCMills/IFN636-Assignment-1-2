@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import type { AdminTabProps } from '../../../types/assets';
 import ConfirmModal from '../../ConfirmModal';
 import InlineErrorBanner from '../../ui/InlineErrorBanner';
+import ImageLightbox from '../../ui/ImageLightbox';
+import EditEntityModal from '../EditEntityModal';
 
 interface PendingDelete {
   action: () => Promise<void>;
@@ -30,6 +32,9 @@ const AssetManagementTab = ({
   deleteAssetType,
   createAssets,
   deleteAsset,
+  uploadPhoto,
+  deletePhoto,
+  updateEntity,
 }: AdminTabProps) => {
   const [newGroupName,    setNewGroupName]    = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(productGroups[0]?.id ?? null);
@@ -40,6 +45,23 @@ const AssetManagementTab = ({
   const [submitting,      setSubmitting]      = useState(false);
   const [apiError,        setApiError]        = useState('');
   const [pendingDelete,   setPendingDelete]   = useState<PendingDelete | null>(null);
+  const [lightboxUrl,     setLightboxUrl]     = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<{
+    entityType: 'group' | 'type' | 'asset';
+    entityId: string;
+  } | null>(null);
+
+  // Derive the full entity from the live data arrays so photo uploads/deletes
+  // are reflected immediately without needing to close and reopen the modal.
+  const editEntity = useMemo(() => {
+    if (!editTarget) return null;
+    switch (editTarget.entityType) {
+      case 'group': return productGroups.find(g => g.id === editTarget.entityId) ?? null;
+      case 'type':  return assetTypes.find(t => t.id === editTarget.entityId) ?? null;
+      case 'asset': return assets.find(a => a.id === editTarget.entityId) ?? null;
+    }
+    return null;
+  }, [editTarget, productGroups, assetTypes, assets]);
 
   // Keep selectedTypeId in sync when selected group changes
   useEffect(() => {
@@ -60,16 +82,25 @@ const AssetManagementTab = ({
     if (typeName) setUnitPrefix(typeName.slice(0, 3).toUpperCase());
   }, [selectedTypeId, assetTypes]);
 
+  /**
+   * withSubmit wraps an async form submission or handler function, providing common
+   * UX feedback: it sets submitting=true during the request, clears API errors, 
+   * and captures/display errors from the API/fn if they occur. It ensures the submitting
+   * flag is reset after completion or any exception.
+   * 
+   * Usage: withSubmit(async () => {... your API logic ...});
+   */
   const withSubmit = async (fn: () => Promise<void>) => {
-    setSubmitting(true);
-    setApiError('');
+    setSubmitting(true);     // Show loading state on form/buttons
+    setApiError('');         // Clear any prior API error
     try {
-      await fn();
+      await fn();            // Run the provided async handler
     } catch (err: unknown) {
+      // Try to surface error returned by API (axios style), fallback to generic
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'An error occurred';
       setApiError(msg);
     } finally {
-      setSubmitting(false);
+      setSubmitting(false);  // Always turn off loading state after completion
     }
   };
 
@@ -195,7 +226,7 @@ const AssetManagementTab = ({
       <section className="card p-6">
         <h2 className="text-xl font-bold text-text-primary mb-4">1. Select Product Group</h2>
 
-        <form onSubmit={handleAddGroup} className="flex gap-2 mb-4">
+        <form onSubmit={handleAddGroup} className="flex gap-2 mb-8 max-w-md">
           <input
             type="text"
             placeholder="New group name…"
@@ -209,28 +240,59 @@ const AssetManagementTab = ({
           </button>
         </form>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          {productGroups.map(group => (
-            <div
-              key={group.id}
-              onClick={() => setSelectedGroupId(group.id)}
-              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition border ${
-                selectedGroupId === group.id
-                  ? 'bg-surface-elevated border-border-strong shadow-inner'
-                  : 'bg-surface-raised border-transparent hover:bg-surface-elevated/50'
-              }`}
-            >
-              <span className="font-medium text-text-secondary truncate">{group.name}</span>
-              <button
-                onClick={e => { e.stopPropagation(); handleDeleteGroup(group.id); }}
-                className="text-text-subtle hover:text-status-danger transition shrink-0 ml-2"
-                disabled={submitting}
-                title="Delete group"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {productGroups.map(group => {
+            const isSelected = selectedGroupId === group.id;
+            return (
+              <div
+                key={group.id}
+                onClick={() => setSelectedGroupId(group.id)}
+                className={`group relative aspect-video bg-surface-base/50 border rounded-xl overflow-hidden hover:border-brand transition-all duration-300 cursor-pointer ${
+                  isSelected
+                    ? 'border-2 border-brand shadow-2xl scale-[1.02] ring-4 ring-brand/20'
+                    : 'border-border-default'
+                }`}
               >
-                <Trash2 size={15} />
-              </button>
-            </div>
-          ))}
+                {/* Image or No Image placeholder */}
+                {group.imageUrl ? (
+                  <img
+                    src={group.imageUrl}
+                    alt={group.name}
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 z-0"
+                    onClick={e => { e.stopPropagation(); setLightboxUrl(group.imageUrl ?? null); }}
+                  />
+                ) : null}
+
+                {/* Title with gradient overlay */}
+                <div className="absolute top-0 inset-x-0 pt-4 pb-10 bg-gradient-to-b from-black/90 to-transparent flex flex-col items-center z-10 pointer-events-none">
+                  <span className="text-white text-sm font-bold tracking-wide drop-shadow-lg px-4 truncate">{group.name}</span>
+                  {group.description && (
+                    <span className="text-white/70 text-xs mt-0.5 px-4 line-clamp-1">{group.description}</span>
+                  )}
+                </div>
+
+                {/* Hover action buttons */}
+                <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/40 backdrop-blur-[2px] z-20 pt-4">
+                  <button
+                    onClick={e => { e.stopPropagation(); setEditTarget({ entityType: 'group', entityId: group.id }); }}
+                    disabled={submitting}
+                    className="w-11 h-11 flex items-center justify-center bg-surface-elevated text-text-primary rounded-full transition-all duration-200 hover:bg-white hover:text-black hover:scale-110 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Edit group"
+                  >
+                    <Pencil size={20} />
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleDeleteGroup(group.id); }}
+                    disabled={submitting}
+                    className="w-11 h-11 flex items-center justify-center bg-surface-elevated text-text-primary rounded-full transition-all duration-200 hover:bg-red-600 hover:text-white hover:scale-110 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Delete group"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
           {productGroups.length === 0 && (
             <p className="text-text-subtle text-sm col-span-full">No groups yet. Add one above.</p>
           )}
@@ -263,28 +325,56 @@ const AssetManagementTab = ({
             </form>
 
             {typesInGroup.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {typesInGroup.map(type => (
-                  <div
-                    key={type.id}
-                    onClick={() => setSelectedTypeId(type.id)}
-                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition border ${
-                      selectedTypeId === type.id
-                        ? 'bg-surface-elevated border-border-strong shadow-inner'
-                        : 'bg-surface-raised border-transparent hover:bg-surface-elevated/50'
-                    }`}
-                  >
-                    <span className="font-medium text-text-secondary truncate">{type.name}</span>
-                    <button
-                      onClick={e => { e.stopPropagation(); handleDeleteType(type.id); }}
-                      className="text-text-subtle hover:text-status-danger transition shrink-0 ml-2"
-                      disabled={submitting}
-                      title="Delete product"
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {typesInGroup.map(type => {
+                  const isSelected = selectedTypeId === type.id;
+                  return (
+                    <div
+                      key={type.id}
+                      onClick={() => setSelectedTypeId(type.id)}
+                      className={`group relative aspect-video bg-surface-base/50 border rounded-xl overflow-hidden hover:border-brand transition-all duration-300 cursor-pointer ${
+                        isSelected
+                          ? 'border-2 border-brand shadow-2xl scale-[1.02] ring-4 ring-brand/20'
+                          : 'border-border-default'
+                      }`}
                     >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                ))}
+                      {type.imageUrl ? (
+                        <img
+                          src={type.imageUrl}
+                          alt={type.name}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 z-0"
+                          onClick={e => { e.stopPropagation(); setLightboxUrl(type.imageUrl ?? null); }}
+                        />
+                      ) : null}
+
+                      <div className="absolute top-0 inset-x-0 pt-4 pb-10 bg-gradient-to-b from-black/90 to-transparent flex flex-col items-center z-10 pointer-events-none">
+                        <span className="text-white text-sm font-bold tracking-wide drop-shadow-lg px-4 truncate">{type.name}</span>
+                        {type.description && (
+                          <span className="text-white/70 text-xs mt-0.5 px-4 line-clamp-1">{type.description}</span>
+                        )}
+                      </div>
+
+                      <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/40 backdrop-blur-[2px] z-20 pt-4">
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditTarget({ entityType: 'type', entityId: type.id }); }}
+                          disabled={submitting}
+                          className="w-11 h-11 flex items-center justify-center bg-surface-elevated text-text-primary rounded-full transition-all duration-200 hover:bg-white hover:text-black hover:scale-110 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Edit product"
+                        >
+                          <Pencil size={20} />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDeleteType(type.id); }}
+                          disabled={submitting}
+                          className="w-11 h-11 flex items-center justify-center bg-surface-elevated text-text-primary rounded-full transition-all duration-200 hover:bg-red-600 hover:text-white hover:scale-110 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete product"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-text-subtle text-sm">No products in this group yet.</p>
@@ -351,24 +441,40 @@ const AssetManagementTab = ({
             </form>
 
             {unitsInType.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {unitsInType.map(unit => (
                   <div
                     key={unit.id}
-                    className="flex items-center justify-between p-3 card hover:bg-surface-elevated/40 transition"
+                    className="flex items-center justify-between p-4 bg-surface-base/50 border border-border-default rounded-xl hover:bg-surface-base transition group cursor-pointer"
+                    onClick={() => setLightboxUrl(unit.imageUrl ?? null)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-semibold text-text-primary truncate">{unit.name}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-text-primary truncate">{unit.name}</span>
+                        {unit.description && (
+                          <span className="text-text-muted text-xs truncate">{unit.description}</span>
+                        )}
+                      </div>
                       <span className={statusBadgeClass(unit.status)}>{unit.status}</span>
                     </div>
-                    <button
-                      onClick={() => handleDeleteUnit(unit.id)}
-                      className="text-text-subtle hover:text-status-danger transition p-1 shrink-0 ml-2"
-                      disabled={submitting}
-                      title="Delete unit"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <button
+                        onClick={e => { e.stopPropagation(); setEditTarget({ entityType: 'asset', entityId: unit.id }); }}
+                        disabled={submitting}
+                        className="text-text-muted hover:text-brand-light transition opacity-0 group-hover:opacity-100 p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Edit unit"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDeleteUnit(unit.id); }}
+                        disabled={submitting}
+                        className="text-text-muted hover:text-red-500 transition opacity-0 group-hover:opacity-100 p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Delete unit"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -396,6 +502,24 @@ const AssetManagementTab = ({
         }}
         onCancel={() => setPendingDelete(null)}
       />
+
+      <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+
+      {editEntity && editTarget && (
+        <EditEntityModal
+          isOpen={!!editEntity}
+          onClose={() => setEditTarget(null)}
+          entityType={editTarget.entityType}
+          entity={editEntity}
+          onSave={async (entityType, id, updates) => {
+            await updateEntity(entityType, id, updates);
+            setEditTarget(null);
+          }}
+          onUploadPhoto={uploadPhoto}
+          onDeletePhoto={deletePhoto}
+          submitting={submitting}
+        />
+      )}
 
     </div>
   );

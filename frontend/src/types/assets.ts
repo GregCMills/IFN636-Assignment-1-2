@@ -8,23 +8,32 @@ export type AssetStatus =
 export interface ProductGroup {
   id: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export interface AssetType {
   id: string;
   groupId: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export interface Asset {
   id: string;
   typeId: string;
   name: string;
+  description?: string;
   status: AssetStatus;
   rentedByUserId?: string;
   returnDate?: string;
   rentedByUserEmail?: string;
   rentedByUserName?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export interface AppUser {
@@ -58,4 +67,11 @@ export interface AdminTabProps {
   createAsset:          (typeId: string, name: string) => Promise<Asset>;
   createAssets:         (typeId: string, names: string[]) => Promise<Asset[]>;
   deleteAsset:          (id: string) => Promise<void>;
+  uploadPhoto:          (entityType: 'group' | 'type' | 'asset', id: string, file: File) => Promise<void>;
+  deletePhoto:          (entityType: 'group' | 'type' | 'asset', id: string) => Promise<void>;
+  updateEntity:         (
+    entityType: 'group' | 'type' | 'asset',
+    id: string,
+    updates: { name?: string; description?: string },
+  ) => Promise<{ name: string; description?: string; imageUrl?: string; thumbnailUrl?: string }>;
 }

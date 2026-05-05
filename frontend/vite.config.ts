@@ -9,7 +9,10 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    proxy: { '/api': 'http://localhost:5001' },
+    proxy: {
+      '/api': 'http://localhost:5001',
+      '/uploads': 'http://localhost:5001',
+    },
   },
   test: {
     globals: true,

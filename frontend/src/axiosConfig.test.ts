@@ -10,8 +10,8 @@ describe('axiosConfig', () => {
     expect(axiosInstance.defaults.baseURL).not.toContain('/api');
   });
 
-  it('sets Content-Type to application/json', () => {
+  it('does not set Content-Type as a default header (axios auto-detects per request)', () => {
     const headers = axiosInstance.defaults.headers as Record<string, unknown>;
-    expect(headers['Content-Type']).toBe('application/json');
+    expect(headers['Content-Type']).toBeUndefined();
   });
 });

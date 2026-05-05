@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
-import { ShoppingCart, Trash2, X, Calendar } from 'lucide-react';
+import { ShoppingCart, Trash2, X, Calendar, Eye } from 'lucide-react';
 import type { CustomerTabProps } from '../../../types/assets';
+import ImageLightbox from '../../ui/ImageLightbox';
+import AssetTypeDetailModal from '../AssetTypeDetailModal';
 
 type Cart = Record<string, number>; // typeId → quantity
 
@@ -10,6 +12,8 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
   const [returnDate, setReturnDate]   = useState('');
   const [cartError, setCartError]     = useState('');
   const [submitting, setSubmitting]   = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [detailType, setDetailType]   = useState<typeof assetTypes[number] | null>(null);
 
   // Count available units per asset type
   const availableCounts = useMemo(() => {
@@ -66,49 +70,91 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
   return (
     <>
       {/* Catalogue — grouped by product group */}
-      <div className="space-y-8">
+      <div className="space-y-16">
         {productGroups.map(group => {
           const typesInGroup = assetTypes.filter(t => t.groupId === group.id);
           if (typesInGroup.length === 0) return null;
 
           return (
             <section key={group.id}>
-              <h2 className="text-xl font-bold text-text-primary mb-4 pb-2 border-b border-border-default">
-                {group.name}
-              </h2>
+              <div className="relative h-24 md:h-32 w-full rounded-2xl overflow-hidden mb-6 group border-2 border-white/40 shadow-2xl">
+                {group.imageUrl ? (
+                  <img
+                    src={group.imageUrl}
+                    alt={group.name}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-brand/80 via-brand-dark to-surface-deep" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/60 to-transparent flex items-center px-8">
+                  <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight [text-shadow:_0_4px_8px_rgba(0,0,0,0.9)]">
+                    {group.name}
+                  </h2>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {typesInGroup.map(type => {
                   const available = availableCounts[type.id] ?? 0;
                   const inCart    = cart[type.id] ?? 0;
                   return (
-                    <div key={type.id} className="card p-5 flex flex-col gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-text-secondary">{type.name}</h3>
-                        <p className={`text-sm mt-0.5 ${available > 0 ? 'text-status-success' : 'text-text-subtle'}`}>
-                          {available > 0 ? `${available} available` : 'None available'}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-brand-light">
-                          {inCart > 0 ? `${inCart} in cart` : ''}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => removeFromCart(type.id)}
-                            disabled={inCart === 0}
-                            className="w-8 h-8 flex items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-secondary hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
-                            aria-label={`Remove one ${type.name} from cart`}
-                          >
-                            −
-                          </button>
-                          <button
-                            onClick={() => addToCart(type.id)}
-                            disabled={available === 0 || inCart >= available}
-                            className="w-8 h-8 flex items-center justify-center rounded border border-brand/40 bg-brand-dim text-brand-subtle hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
-                            aria-label={`Add one ${type.name} to cart`}
-                          >
-                            +
-                          </button>
+                    <div key={type.id} className="card relative overflow-hidden flex group h-32 border border-border-default">
+                      {/* Left side: Square Image with Shadow + hover overlay */}
+                      {type.imageUrl && (
+                        <div className="aspect-square h-full shrink-0 relative z-20 shadow-[6px_0_15px_rgba(0,0,0,0.5)] border-r border-border-default overflow-hidden">
+                          <img 
+                            src={type.imageUrl} 
+                            alt="" 
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => setLightboxUrl(type.imageUrl ?? null)}
+                          />
+                          {/* Dark overlay + view button on hover */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/40 backdrop-blur-[2px] z-20">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDetailType(type); }}
+                              className="w-11 h-11 flex items-center justify-center bg-surface-elevated text-text-primary rounded-full transition-all duration-200 hover:bg-white hover:text-black hover:scale-110 shadow-xl border border-white/30"
+                              aria-label={`View ${type.name} details`}
+                            >
+                              <Eye size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Right side: Content */}
+                      <div className="relative z-10 flex-1 p-3 min-w-0 flex flex-col justify-between bg-surface-raised text-right">
+                        <div className="flex flex-col gap-1">
+                          <h3 className="text-sm md:text-base font-bold text-text-secondary line-clamp-2 leading-tight">{type.name}</h3>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-2 mt-auto">
+                          <p className={`text-[10px] md:text-xs font-medium ${available - inCart > 0 ? 'text-status-success' : 'text-text-subtle'}`}>
+                            {available - inCart > 0 ? `${available - inCart} available` : 'None left'}
+                          </p>
+                          
+                          <div className="flex items-center gap-1 bg-surface-elevated p-1 rounded-lg border border-border-default shadow-sm relative">
+                              {inCart > 0 && (
+                                <div className="absolute -top-2 -left-2 w-5 h-5 bg-brand text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-lg border border-surface-raised z-20 animate-in zoom-in duration-200">
+                                  {inCart}
+                                </div>
+                              )}
+                              <button
+                                onClick={() => removeFromCart(type.id)}
+                                disabled={inCart === 0}
+                                className="w-8 h-8 md:w-7 md:h-7 flex items-center justify-center rounded-md border border-border-strong bg-surface-raised text-text-secondary hover:bg-surface-elevated transition-all disabled:opacity-30 disabled:cursor-not-allowed text-base font-medium active:scale-90"
+                                aria-label={`Remove one ${type.name} from cart`}
+                              >
+                                −
+                              </button>
+                              <button
+                                onClick={() => addToCart(type.id)}
+                                disabled={available === 0 || inCart >= available}
+                                className="w-8 h-8 md:w-7 md:h-7 flex items-center justify-center rounded-md border border-brand/40 bg-brand-dim text-brand-subtle hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-base font-medium active:scale-90"
+                                aria-label={`Add one ${type.name} to cart`}
+                              >
+                                +
+                              </button>
+                            </div>
                         </div>
                       </div>
                     </div>
@@ -224,6 +270,20 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
           </div>
         </div>
       )}
+
+      {/* Asset type detail modal */}
+      <AssetTypeDetailModal
+        isOpen={detailType !== null}
+        onClose={() => setDetailType(null)}
+        onViewImage={(url) => { setLightboxUrl(url); }}
+        assetType={detailType ?? { id: '', name: '', description: '', imageUrl: undefined }}
+        availableCount={detailType ? (availableCounts[detailType.id] ?? 0) : 0}
+        inCartCount={detailType ? (cart[detailType.id] ?? 0) : 0}
+        onAddToCart={addToCart}
+        onRemoveFromCart={removeFromCart}
+      />
+
+      <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </>
   );
 };

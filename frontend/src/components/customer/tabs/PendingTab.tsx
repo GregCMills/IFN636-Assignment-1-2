@@ -3,6 +3,8 @@ import { Clock, ArrowRightLeft, Calendar, Layers } from 'lucide-react';
 import type { CustomerTabProps } from '../../../types/assets';
 import { groupBy, formatAusDate } from '../../../utils/helpers';
 import InlineErrorBanner from '../../ui/InlineErrorBanner';
+import ThumbnailImage from '../../ui/ThumbnailImage';
+import ImageLightbox from '../../ui/ImageLightbox';
 
 /**
  * Shows two read-only sections for the authenticated customer:
@@ -21,6 +23,7 @@ const PendingTab = ({
 }: CustomerTabProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const pendingRentals = assets.filter(
     a => a.rentedByUserId === currentUserId && a.status === 'Pending Rental',
@@ -124,9 +127,16 @@ const PendingTab = ({
                                     className="flex flex-wrap sm:flex-nowrap sm:items-center justify-between gap-3
                                                bg-surface-elevated/20 border border-border-default p-3 rounded-lg"
                                   >
-                                    <span className="text-sm font-medium text-text-secondary">
-                                      {asset.name}
-                                    </span>
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <ThumbnailImage
+                                        thumbnailUrl={asset.thumbnailUrl}
+                                        imageUrl={asset.imageUrl}
+                                        onClick={() => setLightboxUrl(asset.imageUrl ?? null)}
+                                      />
+                                      <span className="text-sm font-medium text-text-secondary">
+                                        {asset.name}
+                                      </span>
+                                    </div>
                                     {renderAction(asset.id)}
                                   </div>
                                 ))}
@@ -146,6 +156,7 @@ const PendingTab = ({
   };
 
   return (
+    <>
     <div className="space-y-10">
       <InlineErrorBanner message={apiError} />
 
@@ -191,6 +202,9 @@ const PendingTab = ({
         )}
       </section>
     </div>
+
+    <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+    </>
   );
 };
 

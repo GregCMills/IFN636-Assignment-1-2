@@ -106,6 +106,53 @@ const Dashboard = () => {
     setAssets(prev => prev.filter(a => a.id !== id));
   };
 
+  const uploadPhoto = async (entityType: 'group' | 'type' | 'asset', id: string, file: File) => {
+    const token = await getToken();
+    const formData = new FormData();
+    formData.append('photo', file);
+    const plural = entityType === 'asset' ? 'assets' : `${entityType}s`;
+    const { data } = await axiosInstance.post(`/api/${plural}/${id}/photo`, formData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // Append cache-buster to force browser re-fetch — the backend reuses the
+    // same filename (entityId.ext) so the URL would otherwise be identical.
+    const cacheBust = `?t=${Date.now()}`;
+    const updater = <T extends { id: string }>(prev: T[]): T[] =>
+      prev.map(item => item.id === id ? { ...item, imageUrl: data.imageUrl + cacheBust, thumbnailUrl: data.thumbnailUrl + cacheBust } as T : item);
+    if (entityType === 'group') setProductGroups(updater);
+    else if (entityType === 'type') setAssetTypes(updater);
+    else setAssets(updater);
+  };
+
+  const deletePhoto = async (entityType: 'group' | 'type' | 'asset', id: string) => {
+    const token = await getToken();
+    const plural = entityType === 'asset' ? 'assets' : `${entityType}s`;
+    await axiosInstance.delete(`/api/${plural}/${id}/photo`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const updater = <T extends { id: string; imageUrl?: string; thumbnailUrl?: string }>(prev: T[]): T[] =>
+      prev.map(item => item.id === id ? { ...item, imageUrl: undefined, thumbnailUrl: undefined } as T : item);
+    if (entityType === 'group') setProductGroups(updater);
+    else if (entityType === 'type') setAssetTypes(updater);
+    else setAssets(updater);
+  };
+
+  const updateEntity = async (
+    entityType: 'group' | 'type' | 'asset',
+    id: string,
+    updates: { name?: string; description?: string },
+  ) => {
+    const headers = await authHeaders();
+    const plural = entityType === 'asset' ? 'assets' : `${entityType}s`;
+    const { data } = await axiosInstance.patch(`/api/${plural}/${id}`, updates, { headers });
+    const updater = <T extends { id: string }>(prev: T[]): T[] =>
+      prev.map(item => item.id === id ? { ...item, ...data } as T : item);
+    if (entityType === 'group') setProductGroups(updater);
+    else if (entityType === 'type') setAssetTypes(updater);
+    else setAssets(updater);
+    return data;
+  };
+
   const requestRental = async (
     items: { typeId: string; quantity: number }[],
     returnDate: string,
@@ -155,6 +202,9 @@ const Dashboard = () => {
     createAsset,
     createAssets,
     deleteAsset,
+    uploadPhoto,
+    deletePhoto,
+    updateEntity,
   };
 
   const customerProps: CustomerTabProps = {
