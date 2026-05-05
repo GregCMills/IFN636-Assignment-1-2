@@ -19,6 +19,7 @@ dotenv.config(); // must be first so env vars are available to all modules
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import connectDB from './config/db';
+import { UPLOADS_ROOT } from './config/paths';
 import auth from './services/auth/ClerkAuthAdapter';
 import { AppError } from './services/errors/AppError';
 
@@ -32,7 +33,7 @@ const app = express();
 app.use(auth.contextMiddleware());
 app.use(cors());
 app.use(express.json());
-app.use('/uploads',    express.static('uploads'));  // serve uploaded photos
+app.use('/uploads', express.static(UPLOADS_ROOT));  // serve uploaded photos
 app.use('/api/auth',   authRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/types',  typeRoutes);

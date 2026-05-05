@@ -9,10 +9,8 @@
  */
 import fs from 'fs/promises';
 import path from 'path';
+import { UPLOADS_ROOT } from '../../../config/paths';
 import StorageStrategy from './StorageStrategy';
-
-/** Root directory for uploaded files, relative to the server entry point. */
-const UPLOADS_ROOT = path.join(__dirname, '..', '..', '..', 'uploads');
 
 export class LocalStorageStrategy extends StorageStrategy {
   /**
