@@ -42,11 +42,24 @@ export interface AppUser {
   role: 'admin' | 'customer';
 }
 
+export interface RentalHistoryEntry {
+  id: string;
+  assetId: string;
+  typeId: string;
+  assetName: string;
+  assetTypeName: string;
+  rentedByUserId: string;
+  returnDate: string;
+  finalStatus: 'Available' | 'Maintenance';
+  completedAt: string;
+}
+
 /** Props passed to the customer dashboard and its tab components. */
 export interface CustomerTabProps {
   assets:              Asset[];
   assetTypes:          AssetType[];
   productGroups:       ProductGroup[];
+  rentalHistory:       RentalHistoryEntry[];
   currentUserId:       string;
   requestRental:       (items: { typeId: string; quantity: number }[], returnDate: string) => Promise<void>;
   updateAssetStatuses: (ids: string[], status: AssetStatus, clearData?: boolean) => Promise<void>;

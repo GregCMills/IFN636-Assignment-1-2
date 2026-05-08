@@ -4,7 +4,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import CustomerDashboard from '../components/customer/CustomerDashboard';
 import axiosInstance from '../axiosConfig';
-import type { Asset, AssetStatus, AssetType, ProductGroup, AdminTabProps, CustomerTabProps } from '../types/assets';
+import type { Asset, AssetStatus, AssetType, ProductGroup, RentalHistoryEntry, AdminTabProps, CustomerTabProps } from '../types/assets';
 
 const Dashboard = () => {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -13,6 +13,7 @@ const Dashboard = () => {
   const [productGroups, setProductGroups] = useState<ProductGroup[]>([]);
   const [assetTypes,    setAssetTypes]    = useState<AssetType[]>([]);
   const [assets,        setAssets]        = useState<Asset[]>([]);
+  const [rentalHistory]                  = useState<RentalHistoryEntry[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState('');
 
@@ -211,6 +212,7 @@ const Dashboard = () => {
     assets,
     assetTypes,
     productGroups,
+    rentalHistory,
     currentUserId: user!.id,
     requestRental,
     updateAssetStatuses,
