@@ -259,3 +259,8 @@ export const resetSeedAssets = async (req: Request, res: Response) => {
     skipped:       [],
   });
 };
+
+export const listRentalHistory = async (req: Request, res: Response) => {
+  // Scaffold: no persistence yet — returns empty array until slice 4 adds the model
+  res.json([]);
+};

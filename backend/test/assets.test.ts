@@ -649,4 +649,20 @@ describe('Asset Management API', () => {
     });
   });
 
+  // ── Rental History ──────────────────────────────────────────────────────────
+
+  describe('GET /api/assets/rental-history', () => {
+    it('returns an empty array when no history exists', async () => {
+      const res = await request(app).get('/api/assets/rental-history');
+      expect(res.status).to.equal(200);
+      expect(res.body).to.deep.equal([]);
+    });
+
+    it('returns 401 when unauthenticated', async () => {
+      clerkMock.setAuth(null);
+      const res = await request(app).get('/api/assets/rental-history');
+      expect(res.status).to.equal(401);
+    });
+  });
+
 });
