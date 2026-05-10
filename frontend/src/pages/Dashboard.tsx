@@ -61,6 +61,10 @@ const Dashboard = () => {
     );
     const updatedMap = new Map<string, Asset>(data.map((a: Asset) => [a.id, a]));
     setAssets(prev => prev.map(a => updatedMap.get(a.id) ?? a));
+
+    // Keep History tab in sync after approvals/returns without requiring a full page reload.
+    const historyResponse = await axiosInstance.get('/api/assets/rental-history', { headers });
+    setRentalHistory(historyResponse.data);
   };
 
   const createProductGroup = async (name: string): Promise<ProductGroup> => {

@@ -49,6 +49,8 @@ export interface RentalHistoryEntry {
   assetName: string;
   assetTypeName: string;
   rentedByUserId: string;
+  rentApprovedAt?: string;
+  rentDate?: string;
   returnDate: string;
   finalStatus: 'Available' | 'Maintenance';
   completedAt: string;

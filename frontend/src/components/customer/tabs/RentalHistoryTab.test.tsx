@@ -41,6 +41,7 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 001',
         assetTypeName: 'MacBook Pro',
         rentedByUserId: 'u-current',
+        rentDate: '2026-05-15',
         returnDate: '2026-05-15',
         finalStatus: 'Available' as const,
         completedAt: '2026-05-16T10:00:00Z',
@@ -50,8 +51,8 @@ describe('RentalHistoryTab — content rendering', () => {
 
     expect(screen.getByText('Asset')).toBeInTheDocument();
     expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('Rent Date')).toBeInTheDocument();
     expect(screen.getByText('Returned')).toBeInTheDocument();
-    expect(screen.getByText('Status')).toBeInTheDocument();
   });
 
   it('shows the asset name in the table row', () => {
@@ -63,6 +64,7 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 007',
         assetTypeName: 'MacBook Pro',
         rentedByUserId: 'u-current',
+        rentDate: '2026-05-15',
         returnDate: '2026-05-15',
         finalStatus: 'Available' as const,
         completedAt: '2026-05-16T10:00:00Z',
@@ -81,6 +83,7 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 001',
         assetTypeName: 'Sony Camera',
         rentedByUserId: 'u-current',
+        rentDate: '2026-05-15',
         returnDate: '2026-05-15',
         finalStatus: 'Available' as const,
         completedAt: '2026-05-16T10:00:00Z',
@@ -90,7 +93,7 @@ describe('RentalHistoryTab — content rendering', () => {
     expect(screen.getByText('Sony Camera')).toBeInTheDocument();
   });
 
-  it('formats the return date as DD-MM-YYYY', () => {
+  it('formats the rent date as DD-MM-YYYY', () => {
     const history = [
       {
         id: 'h1',
@@ -99,6 +102,7 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 001',
         assetTypeName: 'Projector',
         rentedByUserId: 'u-current',
+        rentDate: '2026-05-15',
         returnDate: '2026-05-15',
         finalStatus: 'Available' as const,
         completedAt: '2026-05-16T10:00:00Z',
@@ -108,7 +112,7 @@ describe('RentalHistoryTab — content rendering', () => {
     expect(screen.getByText('15-05-2026')).toBeInTheDocument();
   });
 
-  it('shows "Available" badge with green styling when finalStatus is Available', () => {
+  it('formats the returned date from completedAt as DD-MM-YYYY', () => {
     const history = [
       {
         id: 'h1',
@@ -117,31 +121,15 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 001',
         assetTypeName: 'Laptop',
         rentedByUserId: 'u-current',
+        rentApprovedAt: '2026-05-15T09:00:00.000Z',
+        rentDate: '2026-05-15',
         returnDate: '2026-05-15',
         finalStatus: 'Available' as const,
         completedAt: '2026-05-16T10:00:00Z',
       },
     ];
     render(<RentalHistoryTab {...makeProps({ rentalHistory: history })} />);
-    expect(screen.getByText('Available')).toBeInTheDocument();
-  });
-
-  it('shows "Maintenance" badge with orange styling when finalStatus is Maintenance', () => {
-    const history = [
-      {
-        id: 'h1',
-        assetId: 'a1',
-        typeId: 't1',
-        assetName: 'Unit 001',
-        assetTypeName: 'Laptop',
-        rentedByUserId: 'u-current',
-        returnDate: '2026-05-15',
-        finalStatus: 'Maintenance' as const,
-        completedAt: '2026-05-16T10:00:00Z',
-      },
-    ];
-    render(<RentalHistoryTab {...makeProps({ rentalHistory: history })} />);
-    expect(screen.getByText('Maintenance')).toBeInTheDocument();
+    expect(screen.getByText('16-05-2026')).toBeInTheDocument();
   });
 
   it('renders multiple history entries in table rows', () => {
@@ -153,6 +141,7 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 001',
         assetTypeName: 'MacBook Pro',
         rentedByUserId: 'u-current',
+        rentDate: '2026-05-15',
         returnDate: '2026-05-15',
         finalStatus: 'Available' as const,
         completedAt: '2026-05-16T10:00:00Z',
@@ -164,6 +153,7 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 002',
         assetTypeName: 'Sony Camera',
         rentedByUserId: 'u-current',
+        rentDate: '2026-05-20',
         returnDate: '2026-05-20',
         finalStatus: 'Maintenance' as const,
         completedAt: '2026-05-21T14:30:00Z',
@@ -185,6 +175,7 @@ describe('RentalHistoryTab — content rendering', () => {
         assetName: 'Unit 001',
         assetTypeName: 'Laptop',
         rentedByUserId: 'u-current',
+        rentDate: '2026-05-15',
         returnDate: '2026-05-15',
         finalStatus: 'Available' as const,
         completedAt: '2026-05-16T10:00:00Z',
@@ -192,5 +183,65 @@ describe('RentalHistoryTab — content rendering', () => {
     ];
     render(<RentalHistoryTab {...makeProps({ rentalHistory: history })} />);
     expect(screen.queryByText(/no rental history/i)).not.toBeInTheDocument();
+  });
+
+  it('shows "Not recorded" when rentDate is missing', () => {
+    const history = [
+      {
+        id: 'h1',
+        assetId: 'a1',
+        typeId: 't1',
+        assetName: 'Unit 001',
+        assetTypeName: 'Laptop',
+        rentedByUserId: 'u-current',
+        returnDate: '2026-05-15',
+        finalStatus: 'Available' as const,
+        completedAt: '2026-05-16T10:00:00Z',
+      },
+    ];
+
+    render(<RentalHistoryTab {...makeProps({ rentalHistory: history })} />);
+    expect(screen.getByText('Not recorded')).toBeInTheDocument();
+  });
+
+  it('shows "Not recorded" when rentDate is after returned date', () => {
+    const history = [
+      {
+        id: 'h1',
+        assetId: 'a1',
+        typeId: 't1',
+        assetName: 'Unit 001',
+        assetTypeName: 'Laptop',
+        rentedByUserId: 'u-current',
+        rentDate: '2026-05-30',
+        returnDate: '2026-05-15',
+        finalStatus: 'Available' as const,
+        completedAt: '2026-05-16T10:00:00Z',
+      },
+    ];
+
+    render(<RentalHistoryTab {...makeProps({ rentalHistory: history })} />);
+    expect(screen.getByText('Not recorded')).toBeInTheDocument();
+  });
+
+  it('prefers rentApprovedAt over rentDate for display', () => {
+    const history = [
+      {
+        id: 'h1',
+        assetId: 'a1',
+        typeId: 't1',
+        assetName: 'Unit 001',
+        assetTypeName: 'Laptop',
+        rentedByUserId: 'u-current',
+        rentApprovedAt: '2026-05-11T01:30:00.000Z',
+        rentDate: '2026-05-10',
+        returnDate: '2026-05-15',
+        finalStatus: 'Available' as const,
+        completedAt: '2026-05-16T10:00:00Z',
+      },
+    ];
+
+    render(<RentalHistoryTab {...makeProps({ rentalHistory: history })} />);
+    expect(screen.getByText('11-05-2026')).toBeInTheDocument();
   });
 });

@@ -46,3 +46,18 @@ export const formatAusDate = (dateString: string | undefined): string => {
   const [year, month, day] = parts;
   return `${day}-${month}-${year}`;
 };
+
+/**
+ * Converts an ISO timestamp to Australian display format (DD-MM-YYYY)
+ * using the user's local timezone.
+ */
+export const formatAusDateFromIso = (isoString: string | undefined): string => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return isoString;
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear());
+  return `${day}-${month}-${year}`;
+};

@@ -6,6 +6,8 @@ const rentalHistorySchema = new Schema({
   assetName:     { type: String, required: true },
   assetTypeName: { type: String, required: true },
   rentedByUserId: { type: String, required: true }, // Clerk user ID
+  rentApprovedAt: { type: String },                 // ISO timestamp when rental was approved
+  rentDate:      { type: String },                  // YYYY-MM-DD string (rental approval date)
   returnDate:    { type: String, required: true },  // YYYY-MM-DD string
   finalStatus:   { type: String, enum: ['Available', 'Maintenance'], required: true },
   completedAt:   { type: String, required: true },  // ISO string timestamp

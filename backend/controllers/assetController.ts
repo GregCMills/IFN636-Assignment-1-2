@@ -134,12 +134,21 @@ export const bulkUpdateStatus = async (req: Request, res: Response) => {
     shouldClear = machine.shouldClearRentalData(status);
   }
 
+  // Stamp approval time only for true rental approvals (Pending Rental → Rented).
+  const approvedRentalIds = status === RENTED
+    ? assets.filter(asset => asset.status === PENDING_RENTAL).map(asset => asset._id)
+    : [];
+
   // Note: Observer pattern records completed rentals after the update below
   const update = shouldClear
-    ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
+    ? { status, $unset: { rentedByUserId: 1, rentedAt: 1, returnDate: 1 } }
     : { status };
 
   await Asset.updateMany({ _id: { $in: ids } }, update);
+  if (approvedRentalIds.length > 0) {
+    const approvedAt = new Date().toISOString();
+    await Asset.updateMany({ _id: { $in: approvedRentalIds } }, { $set: { rentedAt: approvedAt } });
+  }
   const updated = await Asset.find({ _id: { $in: ids } });
 
   // Observer pattern: record completed rentals when transitioning from Pending Return
@@ -154,6 +163,8 @@ export const bulkUpdateStatus = async (req: Request, res: Response) => {
             assetName: asset.name,
             assetTypeName: assetType.name,
             rentedByUserId: asset.rentedByUserId,
+            ...(asset.rentedAt ? { rentApprovedAt: asset.rentedAt } : {}),
+            ...(asset.rentedAt ? { rentDate: asset.rentedAt.split('T')[0] } : {}),
             returnDate: asset.returnDate,
             finalStatus: status as 'Available' | 'Maintenance',
           });
@@ -184,6 +195,7 @@ export const requestRental = async (req: Request, res: Response) => {
     for (const asset of available) {
       asset.status         = PENDING_RENTAL;
       asset.rentedByUserId = auth.getUserId(req) || undefined;
+      asset.rentedAt       = undefined;
       asset.returnDate     = returnDate;
       await asset.save();
       updatedAssets.push(asset);

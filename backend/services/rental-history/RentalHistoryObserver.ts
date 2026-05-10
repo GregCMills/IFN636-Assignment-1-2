@@ -18,6 +18,8 @@ export interface RentalCompletionEvent {
   assetName: string;
   assetTypeName: string;
   rentedByUserId: string;
+  rentApprovedAt?: string;
+  rentDate?: string;
   returnDate: string;
   finalStatus: 'Available' | 'Maintenance';
 }
@@ -52,6 +54,8 @@ export class MongoRentalHistoryRecorder implements RentalCompletionObserver {
       returnDate: event.returnDate,
       finalStatus: event.finalStatus,
       completedAt: new Date().toISOString(),
+      ...(event.rentApprovedAt ? { rentApprovedAt: event.rentApprovedAt } : {}),
+      ...(event.rentDate ? { rentDate: event.rentDate } : {}),
     });
   }
 }
