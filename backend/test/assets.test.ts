@@ -4,6 +4,7 @@ import request from 'supertest';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
 import Asset from '../models/Asset';
+import RentalHistory from '../models/RentalHistory';
 import app from '../server';
 
 // ── Seed helpers ──────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ describe('Asset Management API', () => {
       ProductGroup.deleteMany({}),
       AssetType.deleteMany({}),
       Asset.deleteMany({}),
+      RentalHistory.deleteMany({}),
     ]);
     clerkMock.reset();
   });
@@ -662,6 +664,79 @@ describe('Asset Management API', () => {
       clerkMock.setAuth(null);
       const res = await request(app).get('/api/assets/rental-history');
       expect(res.status).to.equal(401);
+    });
+
+    it('records a history entry when an asset is approved for return (Pending Return → Available)', async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id, 'MacBook Pro');
+      const asset = await Asset.create({
+        typeId: type.id,
+        name: 'Unit 001',
+        status: 'Pending Return',
+        rentedByUserId: 'test_user_id',
+        returnDate: '2026-05-15',
+      });
+
+      // Approve the return (transition to Available with clearRentalData)
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Available', clearRentalData: true });
+
+      expect(res.status).to.equal(200);
+
+      // Check that a history entry was recorded
+      const history = await RentalHistory.find({});
+      expect(history).to.have.length(1);
+      expect(history[0].assetId.toString()).to.equal(asset.id.toString());
+      expect(history[0].assetName).to.equal('Unit 001');
+      expect(history[0].assetTypeName).to.equal('MacBook Pro');
+      expect(history[0].rentedByUserId).to.equal('test_user_id');
+      expect(history[0].returnDate).to.equal('2026-05-15');
+      expect(history[0].finalStatus).to.equal('Available');
+    });
+
+    it('records a history entry when an asset is approved for return with Maintenance status', async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id, 'Projector');
+      const asset = await Asset.create({
+        typeId: type.id,
+        name: 'Unit 002',
+        status: 'Pending Return',
+        rentedByUserId: 'test_user_id',
+        returnDate: '2026-05-20',
+      });
+
+      // Approve the return with Maintenance status
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Maintenance', clearRentalData: true });
+
+      expect(res.status).to.equal(200);
+
+      const history = await RentalHistory.find({});
+      expect(history).to.have.length(1);
+      expect(history[0].finalStatus).to.equal('Maintenance');
+    });
+
+    it('does not record a history entry when a return is denied (Pending Return → Pending Rental)', async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id, 'Laptop');
+      const asset = await Asset.create({
+        typeId: type.id,
+        name: 'Unit 003',
+        status: 'Pending Return',
+        rentedByUserId: 'test_user_id',
+        returnDate: '2026-05-10',
+      });
+
+      // Admin denies the return (transition back to Rented without clearing data)
+      // This does NOT trigger history recording because shouldClear will be false
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Rented', clearRentalData: false });
+
+      expect(res.status).to.equal(200);
+
+      // Check that no history entry was recorded
+      const history = await RentalHistory.find({});
+      expect(history).to.have.length(0);
     });
   });
 

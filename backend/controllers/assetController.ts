@@ -10,6 +10,8 @@ import { ValidationError, NotFoundError, AuthorisationError, AppError } from '..
 import { SEED_IMAGES_ROOT } from '../config/paths';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
+import RentalHistory from '../models/RentalHistory';
+import { rentalCompletionSubject, MongoRentalHistoryRecorder } from '../services/rental-history/RentalHistoryObserver';
 import fs from 'fs';
 import path from 'path';
 
@@ -132,12 +134,34 @@ export const bulkUpdateStatus = async (req: Request, res: Response) => {
     shouldClear = machine.shouldClearRentalData(status);
   }
 
+  // Note: Observer pattern records completed rentals after the update below
   const update = shouldClear
     ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
     : { status };
 
   await Asset.updateMany({ _id: { $in: ids } }, update);
   const updated = await Asset.find({ _id: { $in: ids } });
+
+  // Observer pattern: record completed rentals when transitioning from Pending Return
+  if (shouldClear && (status === AVAILABLE || status === MAINTENANCE)) {
+    for (const asset of assets) {
+      if (asset.status === PENDING_RETURN && asset.rentedByUserId && asset.returnDate) {
+        const assetType = await AssetType.findById(asset.typeId);
+        if (assetType) {
+          await rentalCompletionSubject.notify({
+            assetId: asset._id.toString(),
+            typeId: asset.typeId.toString(),
+            assetName: asset.name,
+            assetTypeName: assetType.name,
+            rentedByUserId: asset.rentedByUserId,
+            returnDate: asset.returnDate,
+            finalStatus: status as 'Available' | 'Maintenance',
+          });
+        }
+      }
+    }
+  }
+
   res.json(await enrichWithClerkUsers(updated));
 };
 
@@ -210,10 +234,11 @@ const processSeedImage = async (entityType: 'group' | 'type' | 'asset', entityId
  * everything from the standard seed set so the type-name lookup always succeeds.
  */
 export const resetSeedAssets = async (req: Request, res: Response) => {
-  // Wipe all three collections
+  // Wipe all collections including rental history
   await Asset.deleteMany({});
   await AssetType.deleteMany({});
   await ProductGroup.deleteMany({});
+  await RentalHistory.deleteMany({});
 
   // Re-create groups and build name→id map
   const createdGroups = await ProductGroup.insertMany(SEED_GROUPS);
@@ -261,6 +286,7 @@ export const resetSeedAssets = async (req: Request, res: Response) => {
 };
 
 export const listRentalHistory = async (req: Request, res: Response) => {
-  // Scaffold: no persistence yet — returns empty array until slice 4 adds the model
-  res.json([]);
+  // Return all rental history entries sorted by completion date (newest first)
+  const history = await RentalHistory.find().sort({ completedAt: -1 });
+  res.json(history);
 };
