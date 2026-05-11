@@ -10,6 +10,8 @@ import { ValidationError, NotFoundError, AuthorisationError, AppError } from '..
 import { SEED_IMAGES_ROOT } from '../config/paths';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
+import RentalHistory from '../models/RentalHistory';
+import { rentalCompletionSubject, MongoRentalHistoryRecorder } from '../services/rental-history/RentalHistoryObserver';
 import fs from 'fs';
 import path from 'path';
 
@@ -155,12 +157,45 @@ export const bulkUpdateStatus = async (req: Request, res: Response) => {
     shouldClear = machine.shouldClearRentalData(status);
   }
 
+  // Stamp approval time only for true rental approvals (Pending Rental → Rented).
+  const approvedRentalIds = status === RENTED
+    ? assets.filter(asset => asset.status === PENDING_RENTAL).map(asset => asset._id)
+    : [];
+
+  // Note: Observer pattern records completed rentals after the update below
   const update = shouldClear
-    ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
+    ? { status, $unset: { rentedByUserId: 1, rentedAt: 1, returnDate: 1 } }
     : { status };
 
   await Asset.updateMany({ _id: { $in: ids } }, update);
+  if (approvedRentalIds.length > 0) {
+    const approvedAt = new Date().toISOString();
+    await Asset.updateMany({ _id: { $in: approvedRentalIds } }, { $set: { rentedAt: approvedAt } });
+  }
   const updated = await Asset.find({ _id: { $in: ids } });
+
+  // Observer pattern: record completed rentals when transitioning from Pending Return
+  if (shouldClear && (status === AVAILABLE || status === MAINTENANCE)) {
+    for (const asset of assets) {
+      if (asset.status === PENDING_RETURN && asset.rentedByUserId && asset.returnDate) {
+        const assetType = await AssetType.findById(asset.typeId);
+        if (assetType) {
+          await rentalCompletionSubject.notify({
+            assetId: asset._id.toString(),
+            typeId: asset.typeId.toString(),
+            assetName: asset.name,
+            assetTypeName: assetType.name,
+            rentedByUserId: asset.rentedByUserId,
+            ...(asset.rentedAt ? { rentApprovedAt: asset.rentedAt } : {}),
+            ...(asset.rentedAt ? { rentDate: asset.rentedAt.split('T')[0] } : {}),
+            returnDate: asset.returnDate,
+            finalStatus: status as 'Available' | 'Maintenance',
+          });
+        }
+      }
+    }
+  }
+
   res.json(await enrichWithClerkUsers(updated));
 };
 
@@ -183,6 +218,7 @@ export const requestRental = async (req: Request, res: Response) => {
     for (const asset of available) {
       asset.status         = PENDING_RENTAL;
       asset.rentedByUserId = auth.getUserId(req) || undefined;
+      asset.rentedAt       = undefined;
       asset.returnDate     = returnDate;
       await asset.save();
       updatedAssets.push(asset);
@@ -299,10 +335,11 @@ export const getReportsOverview = async (req: Request, res: Response) => {
  * everything from the standard seed set so the type-name lookup always succeeds.
  */
 export const resetSeedAssets = async (req: Request, res: Response) => {
-  // Wipe all three collections
+  // Wipe all collections including rental history
   await Asset.deleteMany({});
   await AssetType.deleteMany({});
   await ProductGroup.deleteMany({});
+  await RentalHistory.deleteMany({});
 
   // Re-create groups and build name→id map
   const createdGroups = await ProductGroup.insertMany(SEED_GROUPS);
@@ -347,4 +384,10 @@ export const resetSeedAssets = async (req: Request, res: Response) => {
     productGroups: createdGroups.map(g => g.toJSON()),
     skipped:       [],
   });
+};
+
+export const listRentalHistory = async (req: Request, res: Response) => {
+  // Return all rental history entries sorted by completion date (newest first)
+  const history = await RentalHistory.find().sort({ completedAt: -1 });
+  res.json(history);
 };

@@ -15,6 +15,7 @@ const makeProps = (overrides: Partial<CustomerTabProps> = {}): CustomerTabProps 
   assets,
   assetTypes,
   productGroups,
+  rentalHistory:       [],
   currentUserId:       'u-test',
   requestRental:       vi.fn().mockResolvedValue(undefined),
   updateAssetStatuses: vi.fn().mockResolvedValue(undefined),
@@ -29,11 +30,12 @@ describe('CustomerDashboard — rendering', () => {
     expect(screen.getByRole('heading', { name: /customer dashboard/i })).toBeInTheDocument();
   });
 
-  it('renders Browse, My Rentals, and Pending tab buttons', () => {
+  it('renders Browse, My Rentals, Pending, and History tab buttons', () => {
     render(<CustomerDashboard {...makeProps()} />);
     expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /my rentals/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pending/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /history/i })).toBeInTheDocument();
   });
 
   it('shows the Browse tab content (catalogue) by default', () => {
@@ -72,6 +74,15 @@ describe('CustomerDashboard — tab switching', () => {
     await user.click(screen.getByRole('button', { name: /browse/i }));
 
     expect(screen.getByRole('heading', { name: 'Laptops' })).toBeInTheDocument();
+  });
+
+  it('switching to "History" shows the rental history empty state', async () => {
+    const user = userEvent.setup();
+    render(<CustomerDashboard {...makeProps()} />);
+    await user.click(screen.getByRole('button', { name: /history/i }));
+
+    expect(screen.queryByRole('heading', { name: 'Laptops' })).not.toBeInTheDocument();
+    expect(screen.getByText(/no rental history/i)).toBeInTheDocument();
   });
 });
 

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Package, CheckCircle, Clock } from 'lucide-react';
+import { Package, CheckCircle, Clock, History } from 'lucide-react';
 import type { CustomerTabProps } from '../../types/assets';
 import BrowseTab from './tabs/BrowseTab';
 import MyRentalsTab from './tabs/MyRentalsTab';
 import PendingTab from './tabs/PendingTab';
+import RentalHistoryTab from './tabs/RentalHistoryTab';
 
 /** Shape of each entry in the static TABS registry. */
 interface TabConfig {
@@ -21,6 +22,7 @@ const TABS: TabConfig[] = [
   { id: 'browse',   label: 'Browse',     icon: <Package size={16} /> },
   { id: 'rentals',  label: 'My Rentals', icon: <CheckCircle size={16} /> },
   { id: 'pending',  label: 'Pending',    icon: <Clock size={16} /> },
+  { id: 'history',  label: 'History',    icon: <History size={16} /> },
 ];
 
 /**
@@ -56,6 +58,7 @@ const CustomerDashboard = (props: CustomerTabProps) => {
       {activeTabId === 'browse'  && <BrowseTab {...props} />}
       {activeTabId === 'rentals' && <MyRentalsTab {...props} />}
       {activeTabId === 'pending' && <PendingTab {...props} />}
+      {activeTabId === 'history' && <RentalHistoryTab {...props} />}
     </div>
   );
 };

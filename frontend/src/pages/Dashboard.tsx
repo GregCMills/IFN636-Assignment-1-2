@@ -4,7 +4,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import CustomerDashboard from '../components/customer/CustomerDashboard';
 import axiosInstance from '../axiosConfig';
-import type { Asset, AssetStatus, AssetType, ProductGroup, AdminTabProps, CustomerTabProps } from '../types/assets';
+import type { Asset, AssetStatus, AssetType, ProductGroup, RentalHistoryEntry, AdminTabProps, CustomerTabProps } from '../types/assets';
 
 const Dashboard = () => {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -13,6 +13,7 @@ const Dashboard = () => {
   const [productGroups, setProductGroups] = useState<ProductGroup[]>([]);
   const [assetTypes,    setAssetTypes]    = useState<AssetType[]>([]);
   const [assets,        setAssets]        = useState<Asset[]>([]);
+  const [rentalHistory, setRentalHistory] = useState<RentalHistoryEntry[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState('');
 
@@ -30,14 +31,16 @@ const Dashboard = () => {
     const load = async () => {
       try {
         const headers = await authHeaders();
-        const [g, t, a] = await Promise.all([
+        const [g, t, a, r] = await Promise.all([
           axiosInstance.get('/api/groups', { headers }),
           axiosInstance.get('/api/types',  { headers }),
           axiosInstance.get('/api/assets', { headers }),
+          axiosInstance.get('/api/assets/rental-history', { headers }),
         ]);
         setProductGroups(g.data);
         setAssetTypes(t.data);
         setAssets(a.data);
+        setRentalHistory(r.data);
       } catch {
         setError('Failed to load data. Is the backend running?');
       } finally {
@@ -58,6 +61,10 @@ const Dashboard = () => {
     );
     const updatedMap = new Map<string, Asset>(data.map((a: Asset) => [a.id, a]));
     setAssets(prev => prev.map(a => updatedMap.get(a.id) ?? a));
+
+    // Keep History tab in sync after approvals/returns without requiring a full page reload.
+    const historyResponse = await axiosInstance.get('/api/assets/rental-history', { headers });
+    setRentalHistory(historyResponse.data);
   };
 
   const createProductGroup = async (name: string): Promise<ProductGroup> => {
@@ -211,6 +218,7 @@ const Dashboard = () => {
     assets,
     assetTypes,
     productGroups,
+    rentalHistory,
     currentUserId: user!.id,
     requestRental,
     updateAssetStatuses,
