@@ -1,0 +1,83 @@
+name: Deploy to VPS (SSH)
+description: Install/build and restart app on one VPS via appleboy/ssh-action
+
+inputs:
+  host:
+    description: SSH hostname or IP
+    required: true
+  username:
+    description: SSH username
+    required: true
+  ssh_key:
+    description: SSH private key (PEM)
+    required: true
+  github_repository:
+    description: owner/repo for git clone
+    required: true
+  vite_clerk_publishable_key:
+    description: Vite/Clerk publishable key for frontend build
+    required: true
+  prod_env:
+    description: Full production backend .env contents
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Remote deploy
+      uses: appleboy/ssh-action@v1.0.3
+      env:
+        DEPLOY_REPO: ${{ inputs.github_repository }}
+        DEPLOY_VITE_CLERK_PUBLISHABLE_KEY: ${{ inputs.vite_clerk_publishable_key }}
+        DEPLOY_PROD_ENV: ${{ inputs.prod_env }}
+      with:
+        host: ${{ inputs.host }}
+        username: ${{ inputs.username }}
+        key: ${{ inputs.ssh_key }}
+        envs: DEPLOY_REPO,DEPLOY_VITE_CLERK_PUBLISHABLE_KEY,DEPLOY_PROD_ENV
+        script: |
+          # Install Node.js 22 if not present
+          if ! command -v node &> /dev/null; then
+            curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+          fi
+
+          # Install PM2 globally if not present
+          if ! command -v pm2 &> /dev/null; then
+            sudo npm install -g pm2
+          fi
+
+          # Install nginx if not present
+          if ! command -v nginx &> /dev/null; then
+            sudo apt-get install -y nginx
+          fi
+
+          # Clone repo on first run, otherwise pull latest
+          if [ ! -d "/var/www/app" ]; then
+            git clone https://github.com/$DEPLOY_REPO.git /var/www/app
+          fi
+
+          cd /var/www/app
+          git fetch origin main
+          git reset --hard origin/main
+
+          # Install dependencies and build backend + frontend
+          cd backend && npm ci && npm run build
+          cd ../frontend
+          VITE_CLERK_PUBLISHABLE_KEY=$DEPLOY_VITE_CLERK_PUBLISHABLE_KEY npm ci
+          VITE_CLERK_PUBLISHABLE_KEY=$DEPLOY_VITE_CLERK_PUBLISHABLE_KEY npm run build
+
+          # Write production .env
+          printf '%s' "$DEPLOY_PROD_ENV" > /var/www/app/backend/.env
+
+          # Restart PM2 processes
+          cd /var/www/app/backend
+          pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
+          pm2 delete Frontend 2>/dev/null || true
+          pm2 serve /var/www/app/frontend/dist 3000 --name="Frontend" --spa
+          pm2 save
+          pm2 startup | tail -1 | sudo bash || true
+
+          sudo cp /var/www/app/nginx.conf /etc/nginx/sites-available/app
+          sudo ln -sfn /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
+          sudo nginx -t && sudo systemctl reload nginx

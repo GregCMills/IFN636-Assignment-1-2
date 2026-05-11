@@ -107,62 +107,32 @@ jobs:
           sudo nginx -t
           sudo systemctl reload nginx
         
-  # If the tests pass, and this is being pushed to main, deploy to a digital ocean droplet
-  deploy-digitalocean:
-    name: Deploy to DigitalOcean
+  # If the tests pass, and this is pushed to main, deploy to two VPS hosts sequentially (server 2: DO_HOST_2, DO_SSH_KEY_2)
+  deploy-vps:
+    name: Deploy to VPS
     needs: test                          # only runs if test job passes
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout (composite action from repo)
+        uses: actions/checkout@v3
+
+      - name: Deploy via SSH (server 1)
+        uses: ./.github/actions/deploy-vps
         with:
           host: ${{ secrets.DO_HOST }}
           username: ${{ secrets.DO_USER }}
-          key: ${{ secrets.DO_SSH_KEY }}
-          script: |
-            # Install Node.js 22 if not present
-            if ! command -v node &> /dev/null; then
-              curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-              sudo apt-get install -y nodejs
-            fi
+          ssh_key: ${{ secrets.DO_SSH_KEY }}
+          github_repository: ${{ github.repository }}
+          vite_clerk_publishable_key: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          prod_env: ${{ secrets.PROD }}
 
-            # Install PM2 globally if not present
-            if ! command -v pm2 &> /dev/null; then
-              sudo npm install -g pm2
-            fi
-
-            # Install nginx if not present
-            if ! command -v nginx &> /dev/null; then
-              sudo apt-get install -y nginx
-            fi
-
-            # Clone repo on first run, otherwise pull latest
-            if [ ! -d "/var/www/app" ]; then
-              git clone https://github.com/${{ github.repository }}.git /var/www/app
-            fi
-
-            cd /var/www/app
-            git fetch origin main
-            git reset --hard origin/main
-
-            # Install dependencies and build backend + frontend
-            cd backend && npm ci && npm run build
-            cd ../frontend
-            VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }} npm ci
-            VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }} npm run build
-
-            # Write production .env
-            printf '%s' '${{ secrets.PROD }}' > /var/www/app/backend/.env
-
-            # Restart PM2 processes
-            cd /var/www/app/backend
-            pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
-            pm2 delete Frontend 2>/dev/null || true
-            pm2 serve /var/www/app/frontend/dist 3000 --name="Frontend" --spa
-            pm2 save
-            pm2 startup | tail -1 | sudo bash || true
-
-            sudo cp /var/www/app/nginx.conf /etc/nginx/sites-available/app
-            sudo ln -sfn /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
-            sudo nginx -t && sudo systemctl reload nginx
+      - name: Deploy via SSH (server 2)
+        uses: ./.github/actions/deploy-vps
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          ssh_key: ${{ secrets.EC2_SSH_KEY }}
+          github_repository: ${{ github.repository }}
+          vite_clerk_publishable_key: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          prod_env: ${{ secrets.PROD }}
