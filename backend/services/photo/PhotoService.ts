@@ -21,18 +21,15 @@
 import PhotoProcessingDirector from './PhotoProcessingDirector';
 import PhotoHandlerFactory from './handlers/PhotoHandlerFactory';
 import LocalStorageStrategy from './storage/LocalStorageStrategy';
+import S3StorageStrategy from './storage/S3StorageStrategy';
 import { StorageStrategy } from './storage/StorageStrategy';
 
 class PhotoService {
   private storageStrategy: StorageStrategy;
 
   constructor() {
-    /**
-     * The storage strategy instance.  Selected once at startup.
-     * Currently always LocalStorageStrategy; could be switched to S3 etc.
-     * based on an environment variable.
-     */
-    this.storageStrategy = new LocalStorageStrategy();
+    const useS3 = process.env.PHOTO_STORAGE === 's3';
+    this.storageStrategy = useS3 ? new S3StorageStrategy() : new LocalStorageStrategy();
   }
 
   /**
