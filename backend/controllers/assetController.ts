@@ -10,6 +10,7 @@ import { ValidationError, NotFoundError, AuthorisationError, AppError } from '..
 import { SEED_IMAGES_ROOT } from '../config/paths';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
+import { buildDefaultPricingChain, daysUntil } from '../services/pricing/PricingStrategy';
 import fs from 'fs';
 import path from 'path';
 
@@ -225,6 +226,137 @@ const processSeedImage = async (entityType: 'group' | 'type' | 'asset', entityId
   };
 
   await photoService.uploadPhoto(entityType, entityId, file);
+};
+
+/**
+ * GET /api/assets/reports/overview  (admin only — enforced by adminOnly on the route)
+ * FR-04 Admin reporting dashboard.
+ *
+ * Returns a snapshot of the current state of the system:
+ *   - statusCounts: count of assets in each status
+ *   - topRented:    top 5 asset types by currently-rented unit count
+ *   - overdueCount: number of rentals where returnDate is in the past
+ *   - totalAssets:  total asset count across all statuses
+ *   - totalRented:  shortcut for currently-rented total
+ *   - generatedAt:  ISO timestamp the snapshot was generated
+ */
+export const getReportsOverview = async (req: Request, res: Response) => {
+  // Verify admin
+  const userId = auth.getUserId(req);
+  if (!userId) throw new AuthorisationError('Authentication required');
+  const authUser = await auth.getUser(userId);
+  if (authUser.role !== 'admin') throw new AuthorisationError('Admin access required');
+
+  // 1. Total assets by status
+  const statusCounts: Record<string, number> = {};
+  for (const status of STATUSES) {
+    statusCounts[status] = await Asset.countDocuments({ status });
+  }
+
+  // 2. Top-rented asset types (top 5 by current rented count)
+  const rentedAggregation = await Asset.aggregate([
+    { $match: { status: RENTED } },
+    { $group: { _id: '$typeId', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 5 },
+  ]);
+
+  // Enrich with human-readable type names
+  const typeIds = rentedAggregation.map(r => r._id);
+  const types = await AssetType.find({ _id: { $in: typeIds } });
+  const typeMap: Record<string, string> = {};
+  types.forEach(t => { typeMap[t._id.toString()] = t.name; });
+
+  const topRented = rentedAggregation.map(r => ({
+    typeId:   r._id.toString(),
+    typeName: typeMap[r._id.toString()] || 'Unknown',
+    count:    r.count,
+  }));
+
+  // 3. Current overdue rentals (returnDate is before today)
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const overdueCount = await Asset.countDocuments({
+    status: { $in: [RENTED, PENDING_RETURN] },
+    returnDate: { $lt: today },
+  });
+
+  // 4. Totals for context
+  const totalAssets = await Asset.countDocuments();
+  const totalRented = statusCounts[RENTED] || 0;
+
+  res.json({
+    statusCounts,
+    topRented,
+    overdueCount,
+    totalAssets,
+    totalRented,
+    generatedAt: new Date().toISOString(),
+  });
+};
+
+/**
+ * POST /api/assets/calculate-cost
+ * Body: { items: [{ typeId, quantity }], returnDate: 'YYYY-MM-DD' }
+ *
+ * FR-05 — calculates total rental cost using the Decorator pattern.
+ * Each line item is priced via buildDefaultPricingChain (Base → Weekly → Long-term).
+ * Returns a per-item breakdown plus the grand total.
+ *
+ * Authenticated only — no admin requirement, since customers need to see
+ * costs before submitting a rental.
+ */
+export const calculateRentalCost = async (req: Request, res: Response) => {
+  const { items, returnDate } = req.body;
+  if (!items?.length || !returnDate) {
+    throw new ValidationError('items and returnDate are required');
+  }
+
+  const days = daysUntil(returnDate);
+
+  // Look up all asset types in one query
+  const typeIds = items.map((i: any) => i.typeId);
+  const assetTypes = await AssetType.find({ _id: { $in: typeIds } });
+  const typeMap: Record<string, any> = {};
+  assetTypes.forEach(t => { typeMap[t._id.toString()] = t; });
+
+  // Price each line item through the decorator chain
+  const breakdown = items.map((item: any) => {
+    const assetType = typeMap[item.typeId];
+    if (!assetType) {
+      return {
+        typeId: item.typeId,
+        typeName: 'Unknown',
+        quantity: item.quantity,
+        pricePerDay: 0,
+        lineTotal: 0,
+        error: 'Asset type not found',
+      };
+    }
+
+    const pricePerDay = assetType.pricePerDay || 0;
+    const chain       = buildDefaultPricingChain(pricePerDay);
+    const perUnit     = chain.calculate(days);
+    const lineTotal   = perUnit * item.quantity;
+
+    return {
+      typeId:      item.typeId,
+      typeName:    assetType.name,
+      quantity:    item.quantity,
+      pricePerDay,
+      perUnitCost: Number(perUnit.toFixed(2)),
+      lineTotal:   Number(lineTotal.toFixed(2)),
+      breakdown:   chain.describe(),
+    };
+  });
+
+  const grandTotal = breakdown.reduce((sum: number, item: any) => sum + item.lineTotal, 0);
+
+  res.json({
+    days,
+    returnDate,
+    items: breakdown,
+    grandTotal: Number(grandTotal.toFixed(2)),
+  });
 };
 
 /**
