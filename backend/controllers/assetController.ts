@@ -228,6 +228,72 @@ const processSeedImage = async (entityType: 'group' | 'type' | 'asset', entityId
 };
 
 /**
+ * GET /api/assets/reports/overview  (admin only — enforced by adminOnly on the route)
+ * FR-04 Admin reporting dashboard.
+ *
+ * Returns a snapshot of the current state of the system:
+ *   - statusCounts: count of assets in each status
+ *   - topRented:    top 5 asset types by currently-rented unit count
+ *   - overdueCount: number of rentals where returnDate is in the past
+ *   - totalAssets:  total asset count across all statuses
+ *   - totalRented:  shortcut for currently-rented total
+ *   - generatedAt:  ISO timestamp the snapshot was generated
+ */
+export const getReportsOverview = async (req: Request, res: Response) => {
+  // Verify admin
+  const userId = auth.getUserId(req);
+  if (!userId) throw new AuthorisationError('Authentication required');
+  const authUser = await auth.getUser(userId);
+  if (authUser.role !== 'admin') throw new AuthorisationError('Admin access required');
+
+  // 1. Total assets by status
+  const statusCounts: Record<string, number> = {};
+  for (const status of STATUSES) {
+    statusCounts[status] = await Asset.countDocuments({ status });
+  }
+
+  // 2. Top-rented asset types (top 5 by current rented count)
+  const rentedAggregation = await Asset.aggregate([
+    { $match: { status: RENTED } },
+    { $group: { _id: '$typeId', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 5 },
+  ]);
+
+  // Enrich with human-readable type names
+  const typeIds = rentedAggregation.map(r => r._id);
+  const types = await AssetType.find({ _id: { $in: typeIds } });
+  const typeMap: Record<string, string> = {};
+  types.forEach(t => { typeMap[t._id.toString()] = t.name; });
+
+  const topRented = rentedAggregation.map(r => ({
+    typeId:   r._id.toString(),
+    typeName: typeMap[r._id.toString()] || 'Unknown',
+    count:    r.count,
+  }));
+
+  // 3. Current overdue rentals (returnDate is before today)
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const overdueCount = await Asset.countDocuments({
+    status: { $in: [RENTED, PENDING_RETURN] },
+    returnDate: { $lt: today },
+  });
+
+  // 4. Totals for context
+  const totalAssets = await Asset.countDocuments();
+  const totalRented = statusCounts[RENTED] || 0;
+
+  res.json({
+    statusCounts,
+    topRented,
+    overdueCount,
+    totalAssets,
+    totalRented,
+    generatedAt: new Date().toISOString(),
+  });
+};
+
+/**
  * POST /api/assets/reset-seed  (admin only — enforced by adminMiddleware on the route)
  * Full reset: deletes all Assets, AssetTypes, and ProductGroups, then re-creates
  * everything from the standard seed set so the type-name lookup always succeeds.
