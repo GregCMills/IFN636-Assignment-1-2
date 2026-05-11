@@ -44,7 +44,30 @@ const enrichWithClerkUsers = async (assets: any[]) => {
 };
 
 export const listAssets = async (req: Request, res: Response) => {
-  const assets = await Asset.find().sort({ name: 1 });
+  const { name, status, typeId, groupId } = req.query;
+
+  // Build Mongo filter from query params (FR-03)
+  const filter: any = {};
+
+  if (name && typeof name === 'string') {
+    filter.name = { $regex: name, $options: 'i' }; // case-insensitive partial match
+  }
+
+  if (status && typeof status === 'string' && STATUSES.includes(status as any)) {
+    filter.status = status;
+  }
+
+  if (typeId && typeof typeId === 'string') {
+    filter.typeId = typeId;
+  }
+
+  // groupId filter requires joining via AssetType
+  if (groupId && typeof groupId === 'string') {
+    const typesInGroup = await AssetType.find({ groupId }).select('_id');
+    filter.typeId = { $in: typesInGroup.map(t => t._id) };
+  }
+
+  const assets = await Asset.find(filter).sort({ name: 1 });
   res.json(await enrichWithClerkUsers(assets));
 };
 

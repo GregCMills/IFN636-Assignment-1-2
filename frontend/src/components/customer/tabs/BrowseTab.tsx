@@ -15,6 +15,11 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [detailType, setDetailType]   = useState<typeof assetTypes[number] | null>(null);
 
+  // FR-03 filter state
+  const [filterName, setFilterName]       = useState('');
+  const [filterGroupId, setFilterGroupId] = useState('');
+  const [filterStatus, setFilterStatus]   = useState<'all' | 'available' | 'unavailable'>('all');
+
   // Count available units per asset type
   const availableCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -24,6 +29,23 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
     });
     return counts;
   }, [assets, assetTypes]);
+
+  // FR-03 filtered data
+  const filteredGroups = useMemo(() => {
+    return productGroups.filter(g => !filterGroupId || g.id === filterGroupId);
+  }, [productGroups, filterGroupId]);
+
+  const filteredAssetTypes = useMemo(() => {
+    return assetTypes.filter(t => {
+      // Name filter — case-insensitive partial match
+      if (filterName && !t.name.toLowerCase().includes(filterName.toLowerCase())) return false;
+      // Availability filter
+      const available = availableCounts[t.id] ?? 0;
+      if (filterStatus === 'available' && available === 0) return false;
+      if (filterStatus === 'unavailable' && available > 0) return false;
+      return true;
+    });
+  }, [assetTypes, filterName, filterStatus, availableCounts]);
 
   const totalCartItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
 
@@ -71,8 +93,55 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
     <>
       {/* Catalogue — grouped by product group */}
       <div className="space-y-16">
-        {productGroups.map(group => {
-          const typesInGroup = assetTypes.filter(t => t.groupId === group.id);
+        {/* FR-03 Filter controls */}
+        <div className="card p-4 mb-6 flex flex-wrap gap-3 items-end border border-border-default">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs text-text-muted mb-1">Search</label>
+            <input
+              type="text"
+              value={filterName}
+              onChange={e => setFilterName(e.target.value)}
+              placeholder="Search by name..."
+              className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded-md text-text-primary"
+            />
+          </div>
+          <div className="min-w-[180px]">
+            <label className="block text-xs text-text-muted mb-1">Category</label>
+            <select
+              value={filterGroupId}
+              onChange={e => setFilterGroupId(e.target.value)}
+              className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded-md text-text-primary"
+            >
+              <option value="">All categories</option>
+              {productGroups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="min-w-[180px]">
+            <label className="block text-xs text-text-muted mb-1">Availability</label>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value as 'all' | 'available' | 'unavailable')}
+              className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded-md text-text-primary"
+            >
+              <option value="all">All</option>
+              <option value="available">Available only</option>
+              <option value="unavailable">Unavailable only</option>
+            </select>
+          </div>
+          {(filterName || filterGroupId || filterStatus !== 'all') && (
+            <button
+              onClick={() => { setFilterName(''); setFilterGroupId(''); setFilterStatus('all'); }}
+              className="px-4 py-2 bg-surface-elevated border border-border-default rounded-md text-text-secondary hover:bg-surface-raised"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        {filteredGroups.map(group => {
+          const typesInGroup = filteredAssetTypes.filter(t => t.groupId === group.id);
           if (typesInGroup.length === 0) return null;
 
           return (
