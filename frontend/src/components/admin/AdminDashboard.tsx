@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  Package, Wrench, Clock, CheckCircle, ArrowRightLeft, Layers,
+  Package, Wrench, Clock, CheckCircle, ArrowRightLeft, Layers, BarChart3,
 } from 'lucide-react';
 import type { AdminTabProps } from '../../types/assets';
 import Tooltip from '../ui/Tooltip';
@@ -10,6 +10,7 @@ import OverviewTab        from './tabs/OverviewTab';
 import PendingRentalTab   from './tabs/PendingRentalTab';
 import PendingReturnTab   from './tabs/PendingReturnTab';
 import RentedTab          from './tabs/RentedTab';
+import ReportsTab         from './tabs/ReportsTab';
 
 // ── Tab registry ──────────────────────────────────────────────────────────────
 // To add a new tab: add an entry here and create its component file.
@@ -29,6 +30,7 @@ const TABS: TabConfig[] = [
   { id: 'rented',          label: 'Rented',           icon: <CheckCircle size={16} />,    component: RentedTab },
   { id: 'pendingReturn',   label: 'Pending Return',   icon: <ArrowRightLeft size={16} />, component: PendingReturnTab },
   { id: 'assetManagement', label: 'Asset Management', icon: <Layers size={16} />,         component: AssetManagementTab },
+  { id: 'reports',         label: 'Reports',          icon: <BarChart3 size={16} />,      component: ReportsTab },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
