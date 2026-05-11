@@ -11,10 +11,13 @@
  *
  * The `require.main === module` guard means the server only starts listening
  * when run directly (e.g. `node server.js`), not when imported by tests.
+ *
+ * `.env` is loaded via `import 'dotenv/config'` so it runs before other imports.
+ * That avoids tsx/ESM hoisting running route modules (and PhotoService) before
+ * `dotenv.config()` would have executed.
  */
 
-import dotenv from 'dotenv';
-dotenv.config(); // must be first so env vars are available to all modules
+import 'dotenv/config';
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';

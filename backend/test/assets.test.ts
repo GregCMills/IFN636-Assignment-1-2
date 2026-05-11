@@ -329,6 +329,10 @@ describe('Asset Management API', () => {
   });
 
   describe('DELETE /api/assets/:id', () => {
+    beforeEach(() => {
+      clerkMock.reset();
+    });
+
     it('deletes an asset', async () => {
       const group = await mkGroup();
       const type  = await mkType(group.id);
