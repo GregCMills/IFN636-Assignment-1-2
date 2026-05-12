@@ -24,7 +24,7 @@ const RentalHistoryTab = ({ rentalHistory }: CustomerTabProps) => {
         <thead>
           <tr className="border-b border-border-subtle bg-bg-secondary">
             <th className="px-4 py-3 text-left font-semibold text-text-primary">Asset</th>
-            <th className="px-4 py-3 text-left font-semibold text-text-primary">Type</th>
+            <th className="px-4 py-3 text-left font-semibold text-text-primary">Description</th>
             <th className="px-4 py-3 text-left font-semibold text-text-primary">Rent Date</th>
             <th className="px-4 py-3 text-left font-semibold text-text-primary">Returned</th>
           </tr>

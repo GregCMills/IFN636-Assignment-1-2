@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  Package, Wrench, Clock, CheckCircle, ArrowRightLeft, Layers, BarChart3,
+  Package, Wrench, Clock, Calendar, CheckCircle, ArrowRightLeft, Layers, BarChart3,
 } from 'lucide-react';
 import type { AdminTabProps } from '../../types/assets';
 import Tooltip from '../ui/Tooltip';
 import AssetManagementTab from './tabs/AssetManagementTab';
 import MaintenanceTab     from './tabs/MaintenanceTab';
 import OverviewTab        from './tabs/OverviewTab';
+import PendingExtensionTab from './tabs/PendingExtensionTab';
 import PendingRentalTab   from './tabs/PendingRentalTab';
 import PendingReturnTab   from './tabs/PendingReturnTab';
 import RentedTab          from './tabs/RentedTab';
@@ -27,6 +28,7 @@ const TABS: TabConfig[] = [
   { id: 'overview',       label: 'Overview',         icon: <Package size={16} />,        component: OverviewTab },
   { id: 'maintenance',     label: 'Maintenance',      icon: <Wrench size={16} />,         component: MaintenanceTab },
   { id: 'pendingRental',   label: 'Pending Rental',   icon: <Clock size={16} />,          component: PendingRentalTab },
+  { id: 'pendingExtension',label: 'Pending Extension',icon: <Calendar size={16} />,       component: PendingExtensionTab },
   { id: 'rented',          label: 'Rented',           icon: <CheckCircle size={16} />,    component: RentedTab },
   { id: 'pendingReturn',   label: 'Pending Return',   icon: <ArrowRightLeft size={16} />, component: PendingReturnTab },
   { id: 'assetManagement', label: 'Asset Management', icon: <Layers size={16} />,         component: AssetManagementTab },

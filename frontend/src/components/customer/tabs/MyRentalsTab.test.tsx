@@ -259,7 +259,7 @@ describe('MyRentalsTab — Extension request action', () => {
     await user.click(screen.getByRole('button', { name: /request extension/i }));
 
     expect(requestExtension).not.toHaveBeenCalled();
-    expect(screen.getByText(/please select a new return date/i)).toBeInTheDocument();
+    expect(screen.getByText(/select new return date/i)).toBeInTheDocument();
   });
 
   it('shows pending extension text and hides request controls when already pending', () => {
