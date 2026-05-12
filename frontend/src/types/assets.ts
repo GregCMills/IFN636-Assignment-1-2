@@ -30,6 +30,7 @@ export interface Asset {
   status: AssetStatus;
   rentedByUserId?: string;
   returnDate?: string;
+  extensionRequestedReturnDate?: string;
   rentedByUserEmail?: string;
   rentedByUserName?: string;
   imageUrl?: string;
@@ -64,6 +65,7 @@ export interface CustomerTabProps {
   rentalHistory:       RentalHistoryEntry[];
   currentUserId:       string;
   requestRental:       (items: { typeId: string; quantity: number }[], returnDate: string) => Promise<void>;
+  requestExtension:    (assetId: string, newReturnDate: string) => Promise<void>;
   updateAssetStatuses: (ids: string[], status: AssetStatus, clearData?: boolean) => Promise<void>;
 }
 
@@ -75,6 +77,7 @@ export interface AdminTabProps {
   productGroups: ProductGroup[];
   // Async actions — call the API and update parent state
   updateAssetStatuses:  (ids: string[], status: AssetStatus, clearData?: boolean) => Promise<void>;
+  resolveExtensionRequests: (ids: string[], decision: 'approve' | 'deny') => Promise<void>;
   createProductGroup:   (name: string) => Promise<ProductGroup>;
   deleteProductGroup:   (id: string) => Promise<void>;
   createAssetType:      (groupId: string, name: string) => Promise<AssetType>;

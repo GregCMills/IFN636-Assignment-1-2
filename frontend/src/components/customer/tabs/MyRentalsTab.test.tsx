@@ -20,6 +20,7 @@ const makeProps = (overrides: Partial<CustomerTabProps> = {}): CustomerTabProps 
   rentalHistory:       [],
   currentUserId:       CURRENT_USER_ID,
   requestRental:       vi.fn().mockResolvedValue(undefined),
+  requestExtension:    vi.fn().mockResolvedValue(undefined),
   updateAssetStatuses: vi.fn().mockResolvedValue(undefined),
   ...overrides,
 });
