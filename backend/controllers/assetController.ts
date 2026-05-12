@@ -10,6 +10,7 @@ import { ValidationError, NotFoundError, AuthorisationError, AppError } from '..
 import { SEED_IMAGES_ROOT } from '../config/paths';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
+import { buildDefaultPricingChain, daysUntil } from '../services/pricing/PricingStrategy';
 import RentalHistory from '../models/RentalHistory';
 import { rentalCompletionSubject, MongoRentalHistoryRecorder } from '../services/rental-history/RentalHistoryObserver';
 import fs from 'fs';
@@ -407,6 +408,71 @@ export const getReportsOverview = async (req: Request, res: Response) => {
     totalAssets,
     totalRented,
     generatedAt: new Date().toISOString(),
+  });
+};
+
+/**
+ * POST /api/assets/calculate-cost
+ * Body: { items: [{ typeId, quantity }], returnDate: 'YYYY-MM-DD' }
+ *
+ * FR-05 — calculates total rental cost using the Decorator pattern.
+ * Each line item is priced via buildDefaultPricingChain (Base → Weekly → Long-term).
+ * Returns a per-item breakdown plus the grand total.
+ *
+ * Authenticated only — no admin requirement, since customers need to see
+ * costs before submitting a rental.
+ */
+export const calculateRentalCost = async (req: Request, res: Response) => {
+  const { items, returnDate } = req.body;
+  if (!items?.length || !returnDate) {
+    throw new ValidationError('items and returnDate are required');
+  }
+
+  const days = daysUntil(returnDate);
+
+  // Look up all asset types in one query
+  const typeIds = items.map((i: any) => i.typeId);
+  const assetTypes = await AssetType.find({ _id: { $in: typeIds } });
+  const typeMap: Record<string, any> = {};
+  assetTypes.forEach(t => { typeMap[t._id.toString()] = t; });
+
+  // Price each line item through the decorator chain
+  const breakdown = items.map((item: any) => {
+    const assetType = typeMap[item.typeId];
+    if (!assetType) {
+      return {
+        typeId: item.typeId,
+        typeName: 'Unknown',
+        quantity: item.quantity,
+        pricePerDay: 0,
+        lineTotal: 0,
+        error: 'Asset type not found',
+      };
+    }
+
+    const pricePerDay = assetType.pricePerDay || 0;
+    const chain       = buildDefaultPricingChain(pricePerDay);
+    const perUnit     = chain.calculate(days);
+    const lineTotal   = perUnit * item.quantity;
+
+    return {
+      typeId:      item.typeId,
+      typeName:    assetType.name,
+      quantity:    item.quantity,
+      pricePerDay,
+      perUnitCost: Number(perUnit.toFixed(2)),
+      lineTotal:   Number(lineTotal.toFixed(2)),
+      breakdown:   chain.describe(),
+    };
+  });
+
+  const grandTotal = breakdown.reduce((sum: number, item: any) => sum + item.lineTotal, 0);
+
+  res.json({
+    days,
+    returnDate,
+    items: breakdown,
+    grandTotal: Number(grandTotal.toFixed(2)),
   });
 };
 
