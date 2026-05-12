@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MyRentalsTab from './MyRentalsTab';
 import type { CustomerTabProps } from '../../../types/assets';
@@ -212,6 +212,73 @@ describe('MyRentalsTab — Submit Return action', () => {
 
     resolveUpdate();
     await waitFor(() => expect(screen.getAllByRole('button', { name: /submit return/i })[0]).toBeEnabled());
+  });
+});
+
+// ── Extension request action ─────────────────────────────────────────────────
+
+describe('MyRentalsTab — Extension request action', () => {
+  it('renders extension controls for rented assets without pending extension', () => {
+    render(<MyRentalsTab {...makeProps({
+      assets: [
+        { id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Rented', rentedByUserId: CURRENT_USER_ID, returnDate: '2026-06-01' },
+      ],
+    })} />);
+
+    expect(screen.getByLabelText('New return date for Unit 001')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /request extension/i })).toBeInTheDocument();
+  });
+
+  it('calls requestExtension with asset id and selected date', async () => {
+    const user = userEvent.setup();
+    const requestExtension = vi.fn().mockResolvedValue(undefined);
+    render(<MyRentalsTab {...makeProps({
+      requestExtension,
+      assets: [
+        { id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Rented', rentedByUserId: CURRENT_USER_ID, returnDate: '2026-06-01' },
+      ],
+    })} />);
+
+    const input = screen.getByLabelText('New return date for Unit 001');
+    fireEvent.change(input, { target: { value: '2026-06-10' } });
+    await user.click(screen.getByRole('button', { name: /request extension/i }));
+
+    await waitFor(() => expect(requestExtension).toHaveBeenCalledWith('a1', '2026-06-10'));
+  });
+
+  it('shows validation error when requesting extension without date', async () => {
+    const user = userEvent.setup();
+    const requestExtension = vi.fn();
+    render(<MyRentalsTab {...makeProps({
+      requestExtension,
+      assets: [
+        { id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Rented', rentedByUserId: CURRENT_USER_ID, returnDate: '2026-06-01' },
+      ],
+    })} />);
+
+    await user.click(screen.getByRole('button', { name: /request extension/i }));
+
+    expect(requestExtension).not.toHaveBeenCalled();
+    expect(screen.getByText(/please select a new return date/i)).toBeInTheDocument();
+  });
+
+  it('shows pending extension text and hides request controls when already pending', () => {
+    render(<MyRentalsTab {...makeProps({
+      assets: [
+        {
+          id: 'a1',
+          typeId: 't1',
+          name: 'Unit 001',
+          status: 'Rented',
+          rentedByUserId: CURRENT_USER_ID,
+          returnDate: '2026-06-01',
+          extensionRequestedReturnDate: '2026-06-12',
+        },
+      ],
+    })} />);
+
+    expect(screen.getByText(/extension pending: 12-06-2026/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /request extension/i })).not.toBeInTheDocument();
   });
 });
 

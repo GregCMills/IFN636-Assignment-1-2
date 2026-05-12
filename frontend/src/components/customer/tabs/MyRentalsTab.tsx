@@ -15,8 +15,10 @@ import ImageLightbox from '../../ui/ImageLightbox';
  * individual assets, which transitions the asset to 'Pending Return' for admin
  * verification.
  */
-const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }: CustomerTabProps) => {
+const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses, requestExtension }: CustomerTabProps) => {
   const [submitting, setSubmitting] = useState(false);
+  const [submittingExtensionId, setSubmittingExtensionId] = useState<string | null>(null);
+  const [extensionDates, setExtensionDates] = useState<Record<string, string>>({});
   const [apiError,   setApiError]   = useState('');
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
@@ -44,6 +46,28 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }
       setApiError(msg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRequestExtension = async (assetId: string) => {
+    const newReturnDate = extensionDates[assetId];
+    if (!newReturnDate) {
+      setApiError('Please select a new return date for the extension request.');
+      return;
+    }
+
+    setSubmittingExtensionId(assetId);
+    setApiError('');
+    try {
+      await requestExtension(assetId, newReturnDate);
+      setExtensionDates(prev => ({ ...prev, [assetId]: '' }));
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'An error occurred. Please try again.';
+      setApiError(msg);
+    } finally {
+      setSubmittingExtensionId(null);
     }
   };
 
@@ -94,17 +118,47 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses }
                             />
                             <span className="text-sm font-medium text-text-secondary">{asset.name}</span>
                           </div>
-                          <button
-                            onClick={() => handleSubmitReturn([asset.id])}
-                            disabled={submitting}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
-                                       bg-brand-dim/40 border border-brand/30 text-brand-subtle
-                                       hover:bg-brand-dim/70 transition disabled:opacity-50 disabled:cursor-not-allowed
-                                       w-full sm:w-auto justify-center"
-                          >
-                            <ArrowRightLeft size={14} />
-                            Submit Return
-                          </button>
+                          <div className="w-full sm:w-auto flex flex-col sm:items-end gap-2">
+                            {asset.extensionRequestedReturnDate ? (
+                              <span className="text-xs font-medium text-brand-light">
+                                Extension pending: {formatAusDate(asset.extensionRequestedReturnDate)}
+                              </span>
+                            ) : (
+                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <label htmlFor={`extension-date-${asset.id}`} className="sr-only">
+                                  New return date for {asset.name}
+                                </label>
+                                <input
+                                  id={`extension-date-${asset.id}`}
+                                  type="date"
+                                  value={extensionDates[asset.id] ?? ''}
+                                  onChange={e => setExtensionDates(prev => ({ ...prev, [asset.id]: e.target.value }))}
+                                  className="rounded-lg border border-surface-border bg-surface-panel px-2.5 py-1.5 text-sm text-text-primary"
+                                  aria-label={`New return date for ${asset.name}`}
+                                />
+                                <button
+                                  onClick={() => handleRequestExtension(asset.id)}
+                                  disabled={submitting || submittingExtensionId === asset.id}
+                                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-brand/30 text-brand-subtle
+                                             bg-brand-dim/20 hover:bg-brand-dim/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Request Extension
+                                </button>
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => handleSubmitReturn([asset.id])}
+                              disabled={submitting}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
+                                         bg-brand-dim/40 border border-brand/30 text-brand-subtle
+                                         hover:bg-brand-dim/70 transition disabled:opacity-50 disabled:cursor-not-allowed
+                                         w-full sm:w-auto justify-center"
+                            >
+                              <ArrowRightLeft size={14} />
+                              Submit Return
+                            </button>
+                          </div>
                         </AssetRow>
                       ))}
                     </div>
