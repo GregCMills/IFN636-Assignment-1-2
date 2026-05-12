@@ -51,7 +51,7 @@ describe('RentalHistoryTab — content rendering', () => {
     render(<RentalHistoryTab {...makeProps({ rentalHistory: history })} />);
 
     expect(screen.getByText('Asset')).toBeInTheDocument();
-    expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('Description')).toBeInTheDocument();
     expect(screen.getByText('Rent Date')).toBeInTheDocument();
     expect(screen.getByText('Returned')).toBeInTheDocument();
   });
