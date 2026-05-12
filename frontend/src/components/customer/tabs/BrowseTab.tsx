@@ -1,10 +1,28 @@
-import { useState, useMemo } from 'react';
-import { ShoppingCart, Trash2, X, Calendar, Eye } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { ShoppingCart, Trash2, X, Calendar, Eye, DollarSign } from 'lucide-react';
 import type { CustomerTabProps } from '../../../types/assets';
+import axiosInstance from '../../../axiosConfig';
 import ImageLightbox from '../../ui/ImageLightbox';
 import AssetTypeDetailModal from '../AssetTypeDetailModal';
 
 type Cart = Record<string, number>; // typeId → quantity
+
+interface CostItem {
+  typeId: string;
+  typeName: string;
+  quantity: number;
+  pricePerDay: number;
+  perUnitCost: number;
+  lineTotal: number;
+  breakdown: string;
+}
+
+interface CostEstimate {
+  days: number;
+  returnDate: string;
+  items: CostItem[];
+  grandTotal: number;
+}
 
 const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: CustomerTabProps) => {
   const [cart, setCart]               = useState<Cart>({});
@@ -19,6 +37,10 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
   const [filterName, setFilterName]       = useState('');
   const [filterGroupId, setFilterGroupId] = useState('');
   const [filterStatus, setFilterStatus]   = useState<'all' | 'available' | 'unavailable'>('all');
+
+  // FR-05 cost estimate state
+  const [costEstimate, setCostEstimate]     = useState<CostEstimate | null>(null);
+  const [costLoading, setCostLoading]       = useState(false);
 
   // Count available units per asset type
   const availableCounts = useMemo(() => {
@@ -37,9 +59,7 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
 
   const filteredAssetTypes = useMemo(() => {
     return assetTypes.filter(t => {
-      // Name filter — case-insensitive partial match
       if (filterName && !t.name.toLowerCase().includes(filterName.toLowerCase())) return false;
-      // Availability filter
       const available = availableCounts[t.id] ?? 0;
       if (filterStatus === 'available' && available === 0) return false;
       if (filterStatus === 'unavailable' && available > 0) return false;
@@ -48,6 +68,29 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
   }, [assetTypes, filterName, filterStatus, availableCounts]);
 
   const totalCartItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+
+  // FR-05 — fetch cost estimate whenever cart or return date changes
+  useEffect(() => {
+    if (!returnDate || Object.keys(cart).length === 0) {
+      setCostEstimate(null);
+      return;
+    }
+
+    const fetchCost = async () => {
+      setCostLoading(true);
+      try {
+        const items = Object.entries(cart).map(([typeId, quantity]) => ({ typeId, quantity }));
+        const response = await axiosInstance.post('/api/assets/calculate-cost', { items, returnDate });
+        setCostEstimate(response.data);
+      } catch {
+        setCostEstimate(null);
+      } finally {
+        setCostLoading(false);
+      }
+    };
+
+    fetchCost();
+  }, [cart, returnDate]);
 
   const addToCart = (typeId: string) => {
     if ((cart[typeId] ?? 0) < (availableCounts[typeId] ?? 0)) {
@@ -319,6 +362,49 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
                       className="input-base text-sm"
                     />
                   </div>
+
+                  {/* FR-05 Cost estimate */}
+                  {returnDate && Object.keys(cart).length > 0 && (
+                    <div className="pt-4 border-t border-border-default">
+                      <label className="block text-sm font-medium text-text-label mb-2 flex items-center gap-1.5">
+                        <DollarSign size={14} className="text-brand-light" /> Estimated Cost
+                      </label>
+                      {costLoading ? (
+                        <p className="text-text-muted text-sm">Calculating...</p>
+                      ) : costEstimate ? (
+                        <div className="bg-surface-elevated/50 p-3 rounded-lg border border-border-default space-y-2">
+                          <p className="text-xs text-text-muted">
+                            {costEstimate.days} day{costEstimate.days === 1 ? '' : 's'} rental
+                          </p>
+                          {costEstimate.items.map(item => (
+                            <div key={item.typeId} className="flex justify-between text-sm">
+                              <span className="text-text-secondary">
+                                {item.typeName} × {item.quantity}
+                              </span>
+                              <span className="text-text-primary font-medium">
+                                ${item.lineTotal.toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="pt-2 border-t border-border-default flex justify-between items-center">
+                            <span className="text-text-secondary font-bold">Total</span>
+                            <span className="text-brand-light font-bold text-lg">
+                              ${costEstimate.grandTotal.toFixed(2)}
+                            </span>
+                          </div>
+                          {costEstimate.days >= 7 && (
+                            <p className="text-xs text-status-success italic">
+                              {costEstimate.days >= 30
+                                ? 'Long-term discount applied (15% + 10%)'
+                                : 'Weekly discount applied (10%)'}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-text-muted text-sm">Cost unavailable</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
