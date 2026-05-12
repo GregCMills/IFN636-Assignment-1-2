@@ -663,6 +663,129 @@ describe('Asset Management API', () => {
     });
   });
 
+  // ── Rental Extension workflow (FR-08) ───────────────────────────────────────
+
+  describe('Rental Extension workflow', () => {
+    const mkRentedAsset = async (returnDate = '2026-05-20', userId = 'test_user_id') => {
+      const group = await mkGroup();
+      const type = await mkType(group.id, 'MacBook Pro');
+      return Asset.create({
+        typeId: type.id,
+        name: 'Unit 001',
+        status: 'Rented',
+        rentedByUserId: userId,
+        rentedAt: '2026-05-01T09:00:00.000Z',
+        returnDate,
+      });
+    };
+
+    describe('POST /api/assets/request-extension', () => {
+      it('customer can request an extension for their own rented asset', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+
+        const res = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-25' });
+
+        expect(res.status).to.equal(200);
+        expect(res.body.extensionRequestedReturnDate).to.equal('2026-05-25');
+
+        const updated = await Asset.findById(asset.id);
+        expect(updated!.extensionRequestedReturnDate).to.equal('2026-05-25');
+      });
+
+      it('rejects extension requests that are not later than the current return date', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+
+        const res = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-20' });
+
+        expect(res.status).to.equal(400);
+      });
+
+      it('customer cannot request extension for another user\'s rental', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20', 'another_user_id');
+
+        const res = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-25' });
+
+        expect(res.status).to.equal(403);
+      });
+
+      it('prevents duplicate pending extension requests for the same asset', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+
+        await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-25' });
+
+        const second = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-30' });
+
+        expect(second.status).to.equal(400);
+      });
+    });
+
+    describe('PATCH /api/assets/extension-request', () => {
+      it('admin can approve extension requests and update returnDate', async () => {
+        const asset = await mkRentedAsset('2026-05-20');
+        await Asset.findByIdAndUpdate(asset.id, { extensionRequestedReturnDate: '2026-05-27' });
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'approve' });
+
+        expect(res.status).to.equal(200);
+        const updated = await Asset.findById(asset.id);
+        expect(updated!.returnDate).to.equal('2026-05-27');
+        expect(updated!.extensionRequestedReturnDate).to.be.undefined;
+      });
+
+      it('admin can deny extension requests and keep existing returnDate', async () => {
+        const asset = await mkRentedAsset('2026-05-20');
+        await Asset.findByIdAndUpdate(asset.id, { extensionRequestedReturnDate: '2026-05-27' });
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'deny' });
+
+        expect(res.status).to.equal(200);
+        const updated = await Asset.findById(asset.id);
+        expect(updated!.returnDate).to.equal('2026-05-20');
+        expect(updated!.extensionRequestedReturnDate).to.be.undefined;
+      });
+
+      it('rejects non-admin attempts to resolve extension requests', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+        await Asset.findByIdAndUpdate(asset.id, { extensionRequestedReturnDate: '2026-05-27' });
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'approve' });
+
+        expect(res.status).to.equal(403);
+      });
+
+      it('rejects decisions for assets without pending extension requests', async () => {
+        const asset = await mkRentedAsset('2026-05-20');
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'approve' });
+
+        expect(res.status).to.equal(400);
+      });
+    });
+  });
+
   // ── Rental History ──────────────────────────────────────────────────────────
 
   describe('GET /api/assets/rental-history', () => {
