@@ -229,6 +229,16 @@ describe('MyRentalsTab — Extension request action', () => {
     expect(screen.getByRole('button', { name: /request extension/i })).toBeInTheDocument();
   });
 
+  it('limits extension date choices to after the current return date', () => {
+    render(<MyRentalsTab {...makeProps({
+      assets: [
+        { id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Rented', rentedByUserId: CURRENT_USER_ID, returnDate: '2026-06-01' },
+      ],
+    })} />);
+
+    expect(screen.getByLabelText('New return date for Unit 001')).toHaveAttribute('min', '2026-06-02');
+  });
+
   it('calls requestExtension with asset id and selected date', async () => {
     const user = userEvent.setup();
     const requestExtension = vi.fn().mockResolvedValue(undefined);
@@ -260,6 +270,24 @@ describe('MyRentalsTab — Extension request action', () => {
 
     expect(requestExtension).not.toHaveBeenCalled();
     expect(screen.getByText(/select new return date/i)).toBeInTheDocument();
+  });
+
+  it('shows validation error when requested date is not later than current return date', async () => {
+    const user = userEvent.setup();
+    const requestExtension = vi.fn();
+    render(<MyRentalsTab {...makeProps({
+      requestExtension,
+      assets: [
+        { id: 'a1', typeId: 't1', name: 'Unit 001', status: 'Rented', rentedByUserId: CURRENT_USER_ID, returnDate: '2026-06-01' },
+      ],
+    })} />);
+
+    const input = screen.getByLabelText('New return date for Unit 001');
+    fireEvent.change(input, { target: { value: '2026-06-01' } });
+    await user.click(screen.getByRole('button', { name: /request extension/i }));
+
+    expect(requestExtension).not.toHaveBeenCalled();
+    expect(screen.getByText(/choose a date after current return date/i)).toBeInTheDocument();
   });
 
   it('shows pending extension text and hides request controls when already pending', () => {

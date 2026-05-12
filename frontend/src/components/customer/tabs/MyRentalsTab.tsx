@@ -28,6 +28,16 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses, 
     a => a.status === 'Rented' && a.rentedByUserId === currentUserId,
   );
 
+  const getDayAfter = (date?: string) => {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined;
+    const [year, month, day] = date.split('-').map(Number);
+    const next = new Date(Date.UTC(year, month - 1, day + 1));
+    const yyyy = String(next.getUTCFullYear());
+    const mm = String(next.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(next.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const getTypeName = (id: string) =>
     assetTypes.find(t => t.id === id)?.name ?? 'Unknown Product';
 
@@ -51,11 +61,17 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses, 
     }
   };
 
-  const handleRequestExtension = async (assetId: string) => {
+  const handleRequestExtension = async (assetId: string, currentReturnDate?: string) => {
     const newReturnDate = extensionDates[assetId];
     if (!newReturnDate) {
       setExtensionErrorAssetId(assetId);
       setExtensionError('Select new return date.');
+      return;
+    }
+
+    if (currentReturnDate && newReturnDate <= currentReturnDate) {
+      setExtensionErrorAssetId(assetId);
+      setExtensionError('Choose a date after current return date.');
       return;
     }
 
@@ -137,6 +153,7 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses, 
                                   <input
                                     id={`extension-date-${asset.id}`}
                                     type="date"
+                                    min={getDayAfter(asset.returnDate)}
                                     value={extensionDates[asset.id] ?? ''}
                                     onChange={e => {
                                       const value = e.target.value;
@@ -157,7 +174,7 @@ const MyRentalsTab = ({ assets, assetTypes, currentUserId, updateAssetStatuses, 
                                 </div>
 
                                 <button
-                                  onClick={() => handleRequestExtension(asset.id)}
+                                  onClick={() => handleRequestExtension(asset.id, asset.returnDate)}
                                   disabled={submitting || submittingExtensionId === asset.id}
                                   className="min-w-[9.5rem] px-3 py-1.5 text-sm font-medium rounded-lg border border-status-warning/30 text-status-warning
                                              bg-status-warning-dim/20 hover:bg-status-warning-dim/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
