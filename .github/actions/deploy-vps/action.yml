@@ -76,7 +76,10 @@ runs:
           pm2 delete Frontend 2>/dev/null || true
           pm2 serve /var/www/app/frontend/dist 3000 --name="Frontend" --spa
           pm2 save
-          pm2 startup | tail -1 | sudo bash || true
+          # pm2 startup prints instructions; the line to run often looks like "$ sudo env PATH=..." (the "$" is only a doc prompt).
+          # Piping "tail -1" straight into bash makes bash treat "$" as the command name → "$: command not found".
+          # We grep for the actual sudo line, strip an optional leading "$", then run it so systemd can resurrect PM2 after reboot.
+          pm2 startup 2>/dev/null | grep -E '^[[:space:]]*(\$$[[:space:]]+)?sudo env PATH=' | tail -n 1 | sed 's/^[[:space:]]*\$$[[:space:]]\{1,\}//' | sudo bash || true
 
           sudo cp /var/www/app/nginx.conf /etc/nginx/sites-available/app
           sudo ln -sfn /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
