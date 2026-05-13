@@ -107,12 +107,12 @@ jobs:
           sudo nginx -t
           sudo systemctl reload nginx
         
-  # If the tests pass, and this is pushed to main, deploy to two VPS hosts sequentially
+  # Remote SSH deploy runs on the self-hosted runner so connections egress from that host (tighten EC2 SG to its public IP).
   deploy-vps:
     name: Deploy to VPS
     needs: test                          # only runs if test job passes
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/load_balancing'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout (composite action from repo)
         uses: actions/checkout@v3
