@@ -107,7 +107,7 @@ jobs:
           sudo nginx -t
           sudo systemctl reload nginx
         
-  # If the tests pass, and this is pushed to main, deploy to two VPS hosts sequentially (server 2: DO_HOST_2, DO_SSH_KEY_2)
+  # If the tests pass, and this is pushed to main, deploy to two VPS hosts sequentially
   deploy-vps:
     name: Deploy to VPS
     needs: test                          # only runs if test job passes
