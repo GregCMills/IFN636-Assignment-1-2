@@ -4,6 +4,7 @@ import request from 'supertest';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
 import Asset from '../models/Asset';
+import RentalHistory from '../models/RentalHistory';
 import app from '../server';
 
 // ── Seed helpers ──────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ describe('Asset Management API', () => {
       ProductGroup.deleteMany({}),
       AssetType.deleteMany({}),
       Asset.deleteMany({}),
+      RentalHistory.deleteMany({}),
     ]);
     clerkMock.reset();
   });
@@ -375,6 +377,7 @@ describe('Asset Management API', () => {
       expect(res.status).to.equal(200);
       const updated = await Asset.find({});
       expect(updated.every(a => a.status === 'Rented')).to.be.true;
+      expect(updated.every(a => Boolean(a.rentedAt))).to.be.true;
     });
 
     it('clears rentedByUserId and returnDate when clearRentalData is true', async () => {
@@ -384,7 +387,7 @@ describe('Asset Management API', () => {
       // transition under the State pattern — returns must be approved first.
       const asset = await Asset.create({
         typeId: type.id, name: 'Unit 001', status: 'Pending Return',
-        rentedByUserId: 'test_user_id', returnDate: '2026-04-15',
+        rentedByUserId: 'test_user_id', rentedAt: '2026-04-10T09:30:00.000Z', returnDate: '2026-04-15',
       });
 
       await request(app).patch('/api/assets/bulk-status')
@@ -393,6 +396,7 @@ describe('Asset Management API', () => {
       const updated = await Asset.findById(asset.id);
       expect(updated!.status).to.equal('Available');
       expect(updated!.rentedByUserId).to.be.undefined;
+      expect(updated!.rentedAt).to.be.undefined;
       expect(updated!.returnDate).to.be.undefined;
     });
 
@@ -401,7 +405,7 @@ describe('Asset Management API', () => {
       const type  = await mkType(group.id);
       const asset = await Asset.create({
         typeId: type.id, name: 'Unit 001', status: 'Rented',
-        rentedByUserId: 'test_user_id', returnDate: '2026-04-15',
+        rentedByUserId: 'test_user_id', rentedAt: '2026-04-10T09:30:00.000Z', returnDate: '2026-04-15',
       });
 
       await request(app).patch('/api/assets/bulk-status')
@@ -409,6 +413,7 @@ describe('Asset Management API', () => {
 
       const updated = await Asset.findById(asset.id);
       expect(updated!.rentedByUserId).to.equal('test_user_id');
+      expect(updated!.rentedAt).to.equal('2026-04-10T09:30:00.000Z');
       expect(updated!.returnDate).to.equal('2026-04-15');
     });
 
@@ -424,6 +429,7 @@ describe('Asset Management API', () => {
         name: 'Rented Unit',
         status: 'Pending Return',
         rentedByUserId: 'user-123',
+        rentedAt: '2024-12-28T08:00:00.000Z',
         returnDate: '2025-01-01',
       });
 
@@ -437,6 +443,7 @@ describe('Asset Management API', () => {
       const updated = res.body[0];
       expect(updated.status).to.equal('Available');
       expect(updated.rentedByUserId).to.be.undefined;
+      expect(updated.rentedAt).to.be.undefined;
       expect(updated.returnDate).to.be.undefined;
     });
 
@@ -495,6 +502,7 @@ describe('Asset Management API', () => {
         typeId: type.id, name: 'Unit 001',
         status: 'Pending Return',
         rentedByUserId: 'test_user_id',
+        rentedAt: '2026-04-12T10:00:00.000Z',
         returnDate: '2026-04-20',
       });
     };
@@ -535,14 +543,15 @@ describe('Asset Management API', () => {
       const updated = await Asset.findById(asset.id);
       expect(updated!.status).to.equal('Rented');
       expect(updated!.rentedByUserId).to.equal('test_user_id');
+      expect(updated!.rentedAt).to.equal('2026-04-12T10:00:00.000Z');
       expect(updated!.returnDate).to.equal('2026-04-20');
     });
 
     it('admin can approve multiple Pending Return assets in a single request', async () => {
       const group  = await mkGroup();
       const type   = await mkType(group.id);
-      const assetA = await Asset.create({ typeId: type.id, name: 'Unit 001', status: 'Pending Return', rentedByUserId: 'test_user_id', returnDate: '2026-04-20' });
-      const assetB = await Asset.create({ typeId: type.id, name: 'Unit 002', status: 'Pending Return', rentedByUserId: 'test_user_id', returnDate: '2026-04-20' });
+      const assetA = await Asset.create({ typeId: type.id, name: 'Unit 001', status: 'Pending Return', rentedByUserId: 'test_user_id', rentedAt: '2026-04-12T10:00:00.000Z', returnDate: '2026-04-20' });
+      const assetB = await Asset.create({ typeId: type.id, name: 'Unit 002', status: 'Pending Return', rentedByUserId: 'test_user_id', rentedAt: '2026-04-13T10:00:00.000Z', returnDate: '2026-04-20' });
 
       const res = await request(app).patch('/api/assets/bulk-status')
         .send({ ids: [assetA.id, assetB.id], status: 'Available', clearRentalData: true });
@@ -551,6 +560,7 @@ describe('Asset Management API', () => {
       const updated = await Asset.find({ _id: { $in: [assetA.id, assetB.id] } });
       expect(updated.every(a => a.status === 'Available')).to.be.true;
       expect(updated.every(a => !a.rentedByUserId)).to.be.true;
+      expect(updated.every(a => !a.rentedAt)).to.be.true;
     });
 
     it('customer can cancel their own Pending Return (back to Rented)', async () => {
@@ -650,6 +660,222 @@ describe('Asset Management API', () => {
       const res = await request(app).post('/api/assets/request-rental')
         .send({ items: [{ typeId: type.id, quantity: 1 }] });
       expect(res.status).to.equal(400);
+    });
+  });
+
+  // ── Rental Extension workflow (FR-08) ───────────────────────────────────────
+
+  describe('Rental Extension workflow', () => {
+    const mkRentedAsset = async (returnDate = '2026-05-20', userId = 'test_user_id') => {
+      const group = await mkGroup();
+      const type = await mkType(group.id, 'MacBook Pro');
+      return Asset.create({
+        typeId: type.id,
+        name: 'Unit 001',
+        status: 'Rented',
+        rentedByUserId: userId,
+        rentedAt: '2026-05-01T09:00:00.000Z',
+        returnDate,
+      });
+    };
+
+    describe('POST /api/assets/request-extension', () => {
+      it('customer can request an extension for their own rented asset', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+
+        const res = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-25' });
+
+        expect(res.status).to.equal(200);
+        expect(res.body.extensionRequestedReturnDate).to.equal('2026-05-25');
+
+        const updated = await Asset.findById(asset.id);
+        expect(updated!.extensionRequestedReturnDate).to.equal('2026-05-25');
+      });
+
+      it('rejects extension requests that are not later than the current return date', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+
+        const res = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-20' });
+
+        expect(res.status).to.equal(400);
+      });
+
+      it('customer cannot request extension for another user\'s rental', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20', 'another_user_id');
+
+        const res = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-25' });
+
+        expect(res.status).to.equal(403);
+      });
+
+      it('prevents duplicate pending extension requests for the same asset', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+
+        await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-25' });
+
+        const second = await request(app)
+          .post('/api/assets/request-extension')
+          .send({ assetId: asset.id, newReturnDate: '2026-05-30' });
+
+        expect(second.status).to.equal(400);
+      });
+    });
+
+    describe('PATCH /api/assets/extension-request', () => {
+      it('admin can approve extension requests and update returnDate', async () => {
+        const asset = await mkRentedAsset('2026-05-20');
+        await Asset.findByIdAndUpdate(asset.id, { extensionRequestedReturnDate: '2026-05-27' });
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'approve' });
+
+        expect(res.status).to.equal(200);
+        const updated = await Asset.findById(asset.id);
+        expect(updated!.returnDate).to.equal('2026-05-27');
+        expect(updated!.extensionRequestedReturnDate).to.be.undefined;
+      });
+
+      it('admin can deny extension requests and keep existing returnDate', async () => {
+        const asset = await mkRentedAsset('2026-05-20');
+        await Asset.findByIdAndUpdate(asset.id, { extensionRequestedReturnDate: '2026-05-27' });
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'deny' });
+
+        expect(res.status).to.equal(200);
+        const updated = await Asset.findById(asset.id);
+        expect(updated!.returnDate).to.equal('2026-05-20');
+        expect(updated!.extensionRequestedReturnDate).to.be.undefined;
+      });
+
+      it('rejects non-admin attempts to resolve extension requests', async () => {
+        clerkMock.setRole('customer');
+        const asset = await mkRentedAsset('2026-05-20');
+        await Asset.findByIdAndUpdate(asset.id, { extensionRequestedReturnDate: '2026-05-27' });
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'approve' });
+
+        expect(res.status).to.equal(403);
+      });
+
+      it('rejects decisions for assets without pending extension requests', async () => {
+        const asset = await mkRentedAsset('2026-05-20');
+
+        const res = await request(app)
+          .patch('/api/assets/extension-request')
+          .send({ ids: [asset.id], decision: 'approve' });
+
+        expect(res.status).to.equal(400);
+      });
+    });
+  });
+
+  // ── Rental History ──────────────────────────────────────────────────────────
+
+  describe('GET /api/assets/rental-history', () => {
+    it('returns an empty array when no history exists', async () => {
+      const res = await request(app).get('/api/assets/rental-history');
+      expect(res.status).to.equal(200);
+      expect(res.body).to.deep.equal([]);
+    });
+
+    it('returns 401 when unauthenticated', async () => {
+      clerkMock.setAuth(null);
+      const res = await request(app).get('/api/assets/rental-history');
+      expect(res.status).to.equal(401);
+    });
+
+    it('records a history entry when an asset is approved for return (Pending Return → Available)', async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id, 'MacBook Pro');
+      const asset = await Asset.create({
+        typeId: type.id,
+        name: 'Unit 001',
+        status: 'Pending Return',
+        rentedByUserId: 'test_user_id',
+        rentedAt: '2026-05-01T09:00:00.000Z',
+        returnDate: '2026-05-15',
+      });
+
+      // Approve the return (transition to Available with clearRentalData)
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Available', clearRentalData: true });
+
+      expect(res.status).to.equal(200);
+
+      // Check that a history entry was recorded
+      const history = await RentalHistory.find({});
+      expect(history).to.have.length(1);
+      expect(history[0].assetId.toString()).to.equal(asset.id.toString());
+      expect(history[0].assetName).to.equal('Unit 001');
+      expect(history[0].assetTypeName).to.equal('MacBook Pro');
+      expect(history[0].rentedByUserId).to.equal('test_user_id');
+      expect(history[0].rentDate).to.equal('2026-05-01');
+      expect(history[0].returnDate).to.equal('2026-05-15');
+      expect(history[0].finalStatus).to.equal('Available');
+    });
+
+    it('records a history entry when an asset is approved for return with Maintenance status', async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id, 'Projector');
+      const asset = await Asset.create({
+        typeId: type.id,
+        name: 'Unit 002',
+        status: 'Pending Return',
+        rentedByUserId: 'test_user_id',
+        rentedAt: '2026-05-02T11:00:00.000Z',
+        returnDate: '2026-05-20',
+      });
+
+      // Approve the return with Maintenance status
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Maintenance', clearRentalData: true });
+
+      expect(res.status).to.equal(200);
+
+      const history = await RentalHistory.find({});
+      expect(history).to.have.length(1);
+      expect(history[0].rentDate).to.equal('2026-05-02');
+      expect(history[0].finalStatus).to.equal('Maintenance');
+    });
+
+    it('does not record a history entry when a return is denied (Pending Return → Pending Rental)', async () => {
+      const group = await mkGroup();
+      const type  = await mkType(group.id, 'Laptop');
+      const asset = await Asset.create({
+        typeId: type.id,
+        name: 'Unit 003',
+        status: 'Pending Return',
+        rentedByUserId: 'test_user_id',
+        returnDate: '2026-05-10',
+      });
+
+      // Admin denies the return (transition back to Rented without clearing data)
+      // This does NOT trigger history recording because shouldClear will be false
+      const res = await request(app).patch('/api/assets/bulk-status')
+        .send({ ids: [asset.id], status: 'Rented', clearRentalData: false });
+
+      expect(res.status).to.equal(200);
+
+      // Check that no history entry was recorded
+      const history = await RentalHistory.find({});
+      expect(history).to.have.length(0);
     });
   });
 

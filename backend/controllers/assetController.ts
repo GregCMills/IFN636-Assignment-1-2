@@ -10,6 +10,9 @@ import { ValidationError, NotFoundError, AuthorisationError, AppError } from '..
 import { SEED_IMAGES_ROOT } from '../config/paths';
 import ProductGroup from '../models/ProductGroup';
 import AssetType from '../models/AssetType';
+import { buildDefaultPricingChain, daysUntil } from '../services/pricing/PricingStrategy';
+import RentalHistory from '../models/RentalHistory';
+import { rentalCompletionSubject, MongoRentalHistoryRecorder } from '../services/rental-history/RentalHistoryObserver';
 import fs from 'fs';
 import path from 'path';
 
@@ -44,7 +47,30 @@ const enrichWithClerkUsers = async (assets: any[]) => {
 };
 
 export const listAssets = async (req: Request, res: Response) => {
-  const assets = await Asset.find().sort({ name: 1 });
+  const { name, status, typeId, groupId } = req.query;
+
+  // Build Mongo filter from query params (FR-03)
+  const filter: any = {};
+
+  if (name && typeof name === 'string') {
+    filter.name = { $regex: name, $options: 'i' }; // case-insensitive partial match
+  }
+
+  if (status && typeof status === 'string' && STATUSES.includes(status as any)) {
+    filter.status = status;
+  }
+
+  if (typeId && typeof typeId === 'string') {
+    filter.typeId = typeId;
+  }
+
+  // groupId filter requires joining via AssetType
+  if (groupId && typeof groupId === 'string') {
+    const typesInGroup = await AssetType.find({ groupId }).select('_id');
+    filter.typeId = { $in: typesInGroup.map(t => t._id) };
+  }
+
+  const assets = await Asset.find(filter).sort({ name: 1 });
   res.json(await enrichWithClerkUsers(assets));
 };
 
@@ -132,12 +158,45 @@ export const bulkUpdateStatus = async (req: Request, res: Response) => {
     shouldClear = machine.shouldClearRentalData(status);
   }
 
+  // Stamp approval time only for true rental approvals (Pending Rental → Rented).
+  const approvedRentalIds = status === RENTED
+    ? assets.filter(asset => asset.status === PENDING_RENTAL).map(asset => asset._id)
+    : [];
+
+  // Note: Observer pattern records completed rentals after the update below
   const update = shouldClear
-    ? { status, $unset: { rentedByUserId: 1, returnDate: 1 } }
+    ? { status, $unset: { rentedByUserId: 1, rentedAt: 1, returnDate: 1, extensionRequestedReturnDate: 1 } }
     : { status };
 
   await Asset.updateMany({ _id: { $in: ids } }, update);
+  if (approvedRentalIds.length > 0) {
+    const approvedAt = new Date().toISOString();
+    await Asset.updateMany({ _id: { $in: approvedRentalIds } }, { $set: { rentedAt: approvedAt } });
+  }
   const updated = await Asset.find({ _id: { $in: ids } });
+
+  // Observer pattern: record completed rentals when transitioning from Pending Return
+  if (shouldClear && (status === AVAILABLE || status === MAINTENANCE)) {
+    for (const asset of assets) {
+      if (asset.status === PENDING_RETURN && asset.rentedByUserId && asset.returnDate) {
+        const assetType = await AssetType.findById(asset.typeId);
+        if (assetType) {
+          await rentalCompletionSubject.notify({
+            assetId: asset._id.toString(),
+            typeId: asset.typeId.toString(),
+            assetName: asset.name,
+            assetTypeName: assetType.name,
+            rentedByUserId: asset.rentedByUserId,
+            ...(asset.rentedAt ? { rentApprovedAt: asset.rentedAt } : {}),
+            ...(asset.rentedAt ? { rentDate: asset.rentedAt.split('T')[0] } : {}),
+            returnDate: asset.returnDate,
+            finalStatus: status as 'Available' | 'Maintenance',
+          });
+        }
+      }
+    }
+  }
+
   res.json(await enrichWithClerkUsers(updated));
 };
 
@@ -160,13 +219,95 @@ export const requestRental = async (req: Request, res: Response) => {
     for (const asset of available) {
       asset.status         = PENDING_RENTAL;
       asset.rentedByUserId = auth.getUserId(req) || undefined;
+      asset.rentedAt       = undefined;
       asset.returnDate     = returnDate;
+      asset.extensionRequestedReturnDate = undefined;
       await asset.save();
       updatedAssets.push(asset);
     }
   }
 
   res.json(updatedAssets);
+};
+
+/**
+ * POST /api/assets/request-extension
+ * Body: { assetId: string, newReturnDate: 'YYYY-MM-DD' }
+ * Customer requests a later return date for their current rental.
+ */
+export const requestExtension = async (req: Request, res: Response) => {
+  const { assetId, newReturnDate } = req.body;
+  if (!assetId || !newReturnDate) {
+    throw new ValidationError('assetId and newReturnDate are required');
+  }
+
+  const userId = auth.getUserId(req);
+  if (!userId) throw new AuthorisationError('Authentication required');
+
+  const asset = await Asset.findById(assetId);
+  if (!asset) throw new NotFoundError('Asset not found');
+
+  if (asset.status !== RENTED) {
+    throw new ValidationError('Only rented assets can be extended');
+  }
+  if (asset.rentedByUserId !== userId) {
+    throw new AuthorisationError('You can only request an extension for your own rental');
+  }
+  if (!asset.returnDate) {
+    throw new ValidationError('Current returnDate is missing on this asset');
+  }
+  if (asset.extensionRequestedReturnDate) {
+    throw new ValidationError('An extension request is already pending for this asset');
+  }
+  if (newReturnDate <= asset.returnDate) {
+    throw new ValidationError('newReturnDate must be later than the current returnDate');
+  }
+
+  asset.extensionRequestedReturnDate = newReturnDate;
+  await asset.save();
+  res.json(asset);
+};
+
+/**
+ * PATCH /api/assets/extension-request
+ * Body: { ids: string[], decision: 'approve' | 'deny' }
+ * Admin approves or denies pending extension requests.
+ */
+export const resolveExtensionRequests = async (req: Request, res: Response) => {
+  const { ids, decision } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ValidationError('ids must be a non-empty array');
+  }
+  if (decision !== 'approve' && decision !== 'deny') {
+    throw new ValidationError('decision must be "approve" or "deny"');
+  }
+
+  const userId = auth.getUserId(req);
+  if (!userId) throw new AuthorisationError('Authentication required');
+  const authUser = await auth.getUser(userId);
+  if (authUser.role !== 'admin') throw new AuthorisationError('Admin access required');
+
+  const assets = await Asset.find({ _id: { $in: ids } });
+  if (assets.length !== ids.length) {
+    throw new NotFoundError('One or more assets were not found');
+  }
+
+  for (const asset of assets) {
+    if (asset.status !== RENTED) {
+      throw new ValidationError(`Asset "${asset.name}" is not currently rented`);
+    }
+    if (!asset.extensionRequestedReturnDate) {
+      throw new ValidationError(`Asset "${asset.name}" has no pending extension request`);
+    }
+
+    if (decision === 'approve') {
+      asset.returnDate = asset.extensionRequestedReturnDate;
+    }
+    asset.extensionRequestedReturnDate = undefined;
+    await asset.save();
+  }
+
+  res.json(await enrichWithClerkUsers(assets));
 };
 
 /**
@@ -205,15 +346,147 @@ const processSeedImage = async (entityType: 'group' | 'type' | 'asset', entityId
 };
 
 /**
+ * GET /api/assets/reports/overview  (admin only — enforced by adminOnly on the route)
+ * FR-04 Admin reporting dashboard.
+ *
+ * Returns a snapshot of the current state of the system:
+ *   - statusCounts: count of assets in each status
+ *   - topRented:    top 5 asset types by currently-rented unit count
+ *   - overdueCount: number of rentals where returnDate is in the past
+ *   - totalAssets:  total asset count across all statuses
+ *   - totalRented:  shortcut for currently-rented total
+ *   - generatedAt:  ISO timestamp the snapshot was generated
+ */
+export const getReportsOverview = async (req: Request, res: Response) => {
+  // Verify admin
+  const userId = auth.getUserId(req);
+  if (!userId) throw new AuthorisationError('Authentication required');
+  const authUser = await auth.getUser(userId);
+  if (authUser.role !== 'admin') throw new AuthorisationError('Admin access required');
+
+  // 1. Total assets by status
+  const statusCounts: Record<string, number> = {};
+  for (const status of STATUSES) {
+    statusCounts[status] = await Asset.countDocuments({ status });
+  }
+
+  // 2. Top-rented asset types (top 5 by current rented count)
+  const rentedAggregation = await Asset.aggregate([
+    { $match: { status: RENTED } },
+    { $group: { _id: '$typeId', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 5 },
+  ]);
+
+  // Enrich with human-readable type names
+  const typeIds = rentedAggregation.map(r => r._id);
+  const types = await AssetType.find({ _id: { $in: typeIds } });
+  const typeMap: Record<string, string> = {};
+  types.forEach(t => { typeMap[t._id.toString()] = t.name; });
+
+  const topRented = rentedAggregation.map(r => ({
+    typeId:   r._id.toString(),
+    typeName: typeMap[r._id.toString()] || 'Unknown',
+    count:    r.count,
+  }));
+
+  // 3. Current overdue rentals (returnDate is before today)
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const overdueCount = await Asset.countDocuments({
+    status: { $in: [RENTED, PENDING_RETURN] },
+    returnDate: { $lt: today },
+  });
+
+  // 4. Totals for context
+  const totalAssets = await Asset.countDocuments();
+  const totalRented = statusCounts[RENTED] || 0;
+
+  res.json({
+    statusCounts,
+    topRented,
+    overdueCount,
+    totalAssets,
+    totalRented,
+    generatedAt: new Date().toISOString(),
+  });
+};
+
+/**
+ * POST /api/assets/calculate-cost
+ * Body: { items: [{ typeId, quantity }], returnDate: 'YYYY-MM-DD' }
+ *
+ * FR-05 — calculates total rental cost using the Decorator pattern.
+ * Each line item is priced via buildDefaultPricingChain (Base → Weekly → Long-term).
+ * Returns a per-item breakdown plus the grand total.
+ *
+ * Authenticated only — no admin requirement, since customers need to see
+ * costs before submitting a rental.
+ */
+export const calculateRentalCost = async (req: Request, res: Response) => {
+  const { items, returnDate } = req.body;
+  if (!items?.length || !returnDate) {
+    throw new ValidationError('items and returnDate are required');
+  }
+
+  const days = daysUntil(returnDate);
+
+  // Look up all asset types in one query
+  const typeIds = items.map((i: any) => i.typeId);
+  const assetTypes = await AssetType.find({ _id: { $in: typeIds } });
+  const typeMap: Record<string, any> = {};
+  assetTypes.forEach(t => { typeMap[t._id.toString()] = t; });
+
+  // Price each line item through the decorator chain
+  const breakdown = items.map((item: any) => {
+    const assetType = typeMap[item.typeId];
+    if (!assetType) {
+      return {
+        typeId: item.typeId,
+        typeName: 'Unknown',
+        quantity: item.quantity,
+        pricePerDay: 0,
+        lineTotal: 0,
+        error: 'Asset type not found',
+      };
+    }
+
+    const pricePerDay = assetType.pricePerDay || 0;
+    const chain       = buildDefaultPricingChain(pricePerDay);
+    const perUnit     = chain.calculate(days);
+    const lineTotal   = perUnit * item.quantity;
+
+    return {
+      typeId:      item.typeId,
+      typeName:    assetType.name,
+      quantity:    item.quantity,
+      pricePerDay,
+      perUnitCost: Number(perUnit.toFixed(2)),
+      lineTotal:   Number(lineTotal.toFixed(2)),
+      breakdown:   chain.describe(),
+    };
+  });
+
+  const grandTotal = breakdown.reduce((sum: number, item: any) => sum + item.lineTotal, 0);
+
+  res.json({
+    days,
+    returnDate,
+    items: breakdown,
+    grandTotal: Number(grandTotal.toFixed(2)),
+  });
+};
+
+/**
  * POST /api/assets/reset-seed  (admin only — enforced by adminMiddleware on the route)
  * Full reset: deletes all Assets, AssetTypes, and ProductGroups, then re-creates
  * everything from the standard seed set so the type-name lookup always succeeds.
  */
 export const resetSeedAssets = async (req: Request, res: Response) => {
-  // Wipe all three collections
+  // Wipe all collections including rental history
   await Asset.deleteMany({});
   await AssetType.deleteMany({});
   await ProductGroup.deleteMany({});
+  await RentalHistory.deleteMany({});
 
   // Re-create groups and build name→id map
   const createdGroups = await ProductGroup.insertMany(SEED_GROUPS);
@@ -258,4 +531,10 @@ export const resetSeedAssets = async (req: Request, res: Response) => {
     productGroups: createdGroups.map(g => g.toJSON()),
     skipped:       [],
   });
+};
+
+export const listRentalHistory = async (req: Request, res: Response) => {
+  // Return all rental history entries sorted by completion date (newest first)
+  const history = await RentalHistory.find().sort({ completedAt: -1 });
+  res.json(history);
 };

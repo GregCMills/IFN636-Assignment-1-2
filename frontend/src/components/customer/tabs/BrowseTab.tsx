@@ -1,10 +1,28 @@
-import { useState, useMemo } from 'react';
-import { ShoppingCart, Trash2, X, Calendar, Eye } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { ShoppingCart, Trash2, X, Calendar, Eye, DollarSign } from 'lucide-react';
 import type { CustomerTabProps } from '../../../types/assets';
+import axiosInstance from '../../../axiosConfig';
 import ImageLightbox from '../../ui/ImageLightbox';
 import AssetTypeDetailModal from '../AssetTypeDetailModal';
 
 type Cart = Record<string, number>; // typeId → quantity
+
+interface CostItem {
+  typeId: string;
+  typeName: string;
+  quantity: number;
+  pricePerDay: number;
+  perUnitCost: number;
+  lineTotal: number;
+  breakdown: string;
+}
+
+interface CostEstimate {
+  days: number;
+  returnDate: string;
+  items: CostItem[];
+  grandTotal: number;
+}
 
 const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: CustomerTabProps) => {
   const [cart, setCart]               = useState<Cart>({});
@@ -14,6 +32,15 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
   const [submitting, setSubmitting]   = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [detailType, setDetailType]   = useState<typeof assetTypes[number] | null>(null);
+
+  // FR-03 filter state
+  const [filterName, setFilterName]       = useState('');
+  const [filterGroupId, setFilterGroupId] = useState('');
+  const [filterStatus, setFilterStatus]   = useState<'all' | 'available' | 'unavailable'>('all');
+
+  // FR-05 cost estimate state
+  const [costEstimate, setCostEstimate]     = useState<CostEstimate | null>(null);
+  const [costLoading, setCostLoading]       = useState(false);
 
   // Count available units per asset type
   const availableCounts = useMemo(() => {
@@ -25,7 +52,45 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
     return counts;
   }, [assets, assetTypes]);
 
+  // FR-03 filtered data
+  const filteredGroups = useMemo(() => {
+    return productGroups.filter(g => !filterGroupId || g.id === filterGroupId);
+  }, [productGroups, filterGroupId]);
+
+  const filteredAssetTypes = useMemo(() => {
+    return assetTypes.filter(t => {
+      if (filterName && !t.name.toLowerCase().includes(filterName.toLowerCase())) return false;
+      const available = availableCounts[t.id] ?? 0;
+      if (filterStatus === 'available' && available === 0) return false;
+      if (filterStatus === 'unavailable' && available > 0) return false;
+      return true;
+    });
+  }, [assetTypes, filterName, filterStatus, availableCounts]);
+
   const totalCartItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+
+  // FR-05 — fetch cost estimate whenever cart or return date changes
+  useEffect(() => {
+    if (!returnDate || Object.keys(cart).length === 0) {
+      setCostEstimate(null);
+      return;
+    }
+
+    const fetchCost = async () => {
+      setCostLoading(true);
+      try {
+        const items = Object.entries(cart).map(([typeId, quantity]) => ({ typeId, quantity }));
+        const response = await axiosInstance.post('/api/assets/calculate-cost', { items, returnDate });
+        setCostEstimate(response.data);
+      } catch {
+        setCostEstimate(null);
+      } finally {
+        setCostLoading(false);
+      }
+    };
+
+    fetchCost();
+  }, [cart, returnDate]);
 
   const addToCart = (typeId: string) => {
     if ((cart[typeId] ?? 0) < (availableCounts[typeId] ?? 0)) {
@@ -71,8 +136,55 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
     <>
       {/* Catalogue — grouped by product group */}
       <div className="space-y-16">
-        {productGroups.map(group => {
-          const typesInGroup = assetTypes.filter(t => t.groupId === group.id);
+        {/* FR-03 Filter controls */}
+        <div className="card p-4 mb-6 flex flex-wrap gap-3 items-end border border-border-default">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs text-text-muted mb-1">Search</label>
+            <input
+              type="text"
+              value={filterName}
+              onChange={e => setFilterName(e.target.value)}
+              placeholder="Search by name..."
+              className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded-md text-text-primary"
+            />
+          </div>
+          <div className="min-w-[180px]">
+            <label className="block text-xs text-text-muted mb-1">Category</label>
+            <select
+              value={filterGroupId}
+              onChange={e => setFilterGroupId(e.target.value)}
+              className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded-md text-text-primary"
+            >
+              <option value="">All categories</option>
+              {productGroups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="min-w-[180px]">
+            <label className="block text-xs text-text-muted mb-1">Availability</label>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value as 'all' | 'available' | 'unavailable')}
+              className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded-md text-text-primary"
+            >
+              <option value="all">All</option>
+              <option value="available">Available only</option>
+              <option value="unavailable">Unavailable only</option>
+            </select>
+          </div>
+          {(filterName || filterGroupId || filterStatus !== 'all') && (
+            <button
+              onClick={() => { setFilterName(''); setFilterGroupId(''); setFilterStatus('all'); }}
+              className="px-4 py-2 bg-surface-elevated border border-border-default rounded-md text-text-secondary hover:bg-surface-raised"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        {filteredGroups.map(group => {
+          const typesInGroup = filteredAssetTypes.filter(t => t.groupId === group.id);
           if (typesInGroup.length === 0) return null;
 
           return (
@@ -250,6 +362,49 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
                       className="input-base text-sm"
                     />
                   </div>
+
+                  {/* FR-05 Cost estimate */}
+                  {returnDate && Object.keys(cart).length > 0 && (
+                    <div className="pt-4 border-t border-border-default">
+                      <label className="block text-sm font-medium text-text-label mb-2 flex items-center gap-1.5">
+                        <DollarSign size={14} className="text-brand-light" /> Estimated Cost
+                      </label>
+                      {costLoading ? (
+                        <p className="text-text-muted text-sm">Calculating...</p>
+                      ) : costEstimate ? (
+                        <div className="bg-surface-elevated/50 p-3 rounded-lg border border-border-default space-y-2">
+                          <p className="text-xs text-text-muted">
+                            {costEstimate.days} day{costEstimate.days === 1 ? '' : 's'} rental
+                          </p>
+                          {costEstimate.items.map(item => (
+                            <div key={item.typeId} className="flex justify-between text-sm">
+                              <span className="text-text-secondary">
+                                {item.typeName} × {item.quantity}
+                              </span>
+                              <span className="text-text-primary font-medium">
+                                ${item.lineTotal.toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="pt-2 border-t border-border-default flex justify-between items-center">
+                            <span className="text-text-secondary font-bold">Total</span>
+                            <span className="text-brand-light font-bold text-lg">
+                              ${costEstimate.grandTotal.toFixed(2)}
+                            </span>
+                          </div>
+                          {costEstimate.days >= 7 && (
+                            <p className="text-xs text-status-success italic">
+                              {costEstimate.days >= 30
+                                ? 'Long-term discount applied (15% + 10%)'
+                                : 'Weekly discount applied (10%)'}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-text-muted text-sm">Cost unavailable</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -10,7 +10,9 @@ const assetSchema = new Schema({
   description:     { type: String, default: '' },
   status:          { type: String, enum: STATUSES, default: 'Available' },
   rentedByUserId:  { type: String },   // Clerk user ID
+  rentedAt:        { type: String },   // ISO timestamp when rental is approved
   returnDate:      { type: String },   // YYYY-MM-DD string
+  extensionRequestedReturnDate: { type: String }, // Pending extension date requested by customer
   imageUrl:        { type: String },   // Photo URL (populated by the photo service)
   thumbnailUrl:    { type: String },   // Thumbnail URL (populated by the photo service)
 });

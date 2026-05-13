@@ -20,6 +20,8 @@ const assetTypeSchema = new Schema({
   /** Photo URLs (populated by the photo service when uploads are enabled). */
   imageUrl:     { type: String },
   thumbnailUrl: { type: String },
+  /** Rental price per day in AUD (FR-05). Defaults to 0 for existing data. */
+  pricePerDay:  { type: Number, default: 0 },
 });
 
 /** Normalise output: expose `id` and `groupId` as plain strings; strip Mongoose internals. */
@@ -38,4 +40,5 @@ export type IAssetType = InferSchemaType<typeof assetTypeSchema> & {
 };
 export type AssetTypeDocument = HydratedDocument<IAssetType>;
 
-export default model<IAssetType>('AssetType', assetTypeSchema);
+const AssetTypeModel = model<IAssetType>('AssetType', assetTypeSchema);
+export default AssetTypeModel;
