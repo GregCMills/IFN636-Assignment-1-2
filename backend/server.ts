@@ -53,9 +53,16 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 if (require.main === module) {
-    connectDB();
-    const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
+    void (async () => {
+      try {
+        await connectDB();
+        const PORT = process.env.PORT || 5001;
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+      } catch (err) {
+        console.error('Server failed to start:', err);
+        process.exit(1);
+      }
+    })();
+  }
 
 export default app;

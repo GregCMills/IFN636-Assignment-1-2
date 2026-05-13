@@ -91,18 +91,21 @@ jobs:
           echo "${{ secrets.PROD }}" > .env
 
       - name: Start and Restart PM2
-        working-directory: ./backend
         run: |
-          pm2 describe backend > /dev/null 2>&1 && pm2 restart backend --update-env || pm2 start "npm run start" --name="backend"
+          BACKEND_DIR="${GITHUB_WORKSPACE}/backend"
+          pm2 delete backend 2>/dev/null || true
+          pm2 start npm --name backend --cwd "$BACKEND_DIR" -- run start
           sudo mkdir -p /var/www/app/frontend/dist
           sudo rm -rf /var/www/app/frontend/dist/*
-          sudo cp -r ../frontend/dist/. /var/www/app/frontend/dist/
+          sudo cp -r "${GITHUB_WORKSPACE}/frontend/dist/." /var/www/app/frontend/dist/
           pm2 delete Frontend 2>/dev/null || true
           pm2 save
 
       - name: Install and reload nginx config
         run: |
-          sudo cp ./nginx.conf /etc/nginx/sites-available/app
+          BACKEND_PORT=$(awk -F= '/^PORT=/ { val=$2; gsub(/^[ \t"]+|[ \t"\r]+$/, "", val); print val; exit }' ./backend/.env)
+          BACKEND_PORT=${BACKEND_PORT:-5001}
+          sed "s|http://localhost:5001|http://127.0.0.1:${BACKEND_PORT}|g" ./nginx.conf | sudo tee /etc/nginx/sites-available/app > /dev/null
           sudo ln -sfn /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
           sudo rm -f /etc/nginx/sites-enabled/default
           sudo nginx -t
