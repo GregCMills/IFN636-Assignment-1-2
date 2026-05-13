@@ -56,8 +56,11 @@ runs:
             sudo apt-get install -y nginx
           fi
 
-          # Clone repo on first run, otherwise pull latest
-          if [ ! -d "/var/www/app" ]; then
+          # App directory: /var/www is root-owned on fresh Ubuntu/EC2; deploy user must own it for git/npm.
+          sudo mkdir -p /var/www/app
+          sudo chown -R "$(whoami):$(whoami)" /var/www/app
+
+          if [ ! -d "/var/www/app/.git" ]; then
             git clone https://github.com/$DEPLOY_REPO.git /var/www/app
           fi
 
