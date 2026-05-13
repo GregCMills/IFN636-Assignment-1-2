@@ -12,6 +12,8 @@
  *   PATCH  /api/assets/bulk-status    — update status for one or more assets
  *   POST   /api/assets/request-rental — request rental (authenticated users)
  *   POST   /api/assets/calculate-cost — calculate rental cost via decorator chain (FR-05)
+ *   POST   /api/assets/request-extension — request rental extension (customer)
+ *   PATCH  /api/assets/extension-request — approve/deny extension requests (admin)
  *   POST   /api/assets/reset-seed     — wipe and re-seed all data (admin)
  *   GET    /api/assets/rental-history — list completed rentals for the current user
  *   POST   /api/assets/:id/photo      — upload a photo for an asset (admin)
@@ -23,7 +25,7 @@ import express from 'express';
 import auth from '../services/auth/ClerkAuthAdapter';
 import {
   listAssets, createAsset, batchCreateAssets, deleteAsset, bulkUpdateStatus,
-  requestRental, resetSeedAssets, getReportsOverview, calculateRentalCost,
+  requestRental, requestExtension, resolveExtensionRequests, resetSeedAssets, getReportsOverview, calculateRentalCost,
   listRentalHistory,
 } from '../controllers/assetController';
 import { uploadPhoto, deletePhoto } from '../controllers/photoController';
@@ -40,6 +42,8 @@ router.post('/batch',                    auth.requireAuth(), auth.adminOnly(),  
 router.patch('/bulk-status',             auth.requireAuth(),                    bulkUpdateStatus);
 router.post('/request-rental',           auth.requireAuth(),                    requestRental);
 router.post('/calculate-cost',           auth.requireAuth(),                    calculateRentalCost);
+router.post('/request-extension',        auth.requireAuth(),                    requestExtension);
+router.patch('/extension-request',       auth.requireAuth(), auth.adminOnly(),  resolveExtensionRequests);
 router.post('/reset-seed',               auth.requireAuth(), auth.adminOnly(),  resetSeedAssets);
 router.get('/rental-history',            auth.requireAuth(),                    listRentalHistory);
 router.post('/:id/photo',                auth.requireAuth(), auth.adminOnly(),  upload.single('photo'), validateFileType, uploadPhoto('asset'));

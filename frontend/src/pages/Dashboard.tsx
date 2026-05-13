@@ -174,6 +174,28 @@ const Dashboard = () => {
     setAssets(prev => prev.map(a => updatedMap.get(a.id) ?? a));
   };
 
+  const requestExtension = async (assetId: string, newReturnDate: string) => {
+    const headers = await authHeaders();
+    const { data } = await axiosInstance.post(
+      '/api/assets/request-extension',
+      { assetId, newReturnDate },
+      { headers },
+    );
+    const updated = data as Asset;
+    setAssets(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+  };
+
+  const resolveExtensionRequests = async (ids: string[], decision: 'approve' | 'deny') => {
+    const headers = await authHeaders();
+    const { data } = await axiosInstance.patch(
+      '/api/assets/extension-request',
+      { ids, decision },
+      { headers },
+    );
+    const updatedMap = new Map<string, Asset>((data as Asset[]).map(a => [a.id, a]));
+    setAssets(prev => prev.map(a => updatedMap.get(a.id) ?? a));
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (!isLoaded || (isSignedIn && loading)) {
@@ -202,6 +224,7 @@ const Dashboard = () => {
     assetTypes,
     productGroups,
     updateAssetStatuses,
+    resolveExtensionRequests,
     createProductGroup,
     deleteProductGroup,
     createAssetType,
@@ -221,6 +244,7 @@ const Dashboard = () => {
     rentalHistory,
     currentUserId: user!.id,
     requestRental,
+    requestExtension,
     updateAssetStatuses,
   };
 

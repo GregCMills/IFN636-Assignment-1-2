@@ -21,6 +21,7 @@ const makeProps = (overrides: Partial<AdminTabProps> = {}): AdminTabProps => ({
   assetTypes,
   productGroups,
   updateAssetStatuses: vi.fn().mockResolvedValue(undefined),
+  resolveExtensionRequests: vi.fn().mockResolvedValue(undefined),
   createProductGroup:  vi.fn().mockResolvedValue({ id: 'x', name: 'X' }),
   deleteProductGroup:  vi.fn().mockResolvedValue(undefined),
   createAssetType:     vi.fn().mockResolvedValue({ id: 'x', groupId: 'g1', name: 'X' }),

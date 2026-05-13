@@ -165,7 +165,7 @@ export const bulkUpdateStatus = async (req: Request, res: Response) => {
 
   // Note: Observer pattern records completed rentals after the update below
   const update = shouldClear
-    ? { status, $unset: { rentedByUserId: 1, rentedAt: 1, returnDate: 1 } }
+    ? { status, $unset: { rentedByUserId: 1, rentedAt: 1, returnDate: 1, extensionRequestedReturnDate: 1 } }
     : { status };
 
   await Asset.updateMany({ _id: { $in: ids } }, update);
@@ -221,12 +221,93 @@ export const requestRental = async (req: Request, res: Response) => {
       asset.rentedByUserId = auth.getUserId(req) || undefined;
       asset.rentedAt       = undefined;
       asset.returnDate     = returnDate;
+      asset.extensionRequestedReturnDate = undefined;
       await asset.save();
       updatedAssets.push(asset);
     }
   }
 
   res.json(updatedAssets);
+};
+
+/**
+ * POST /api/assets/request-extension
+ * Body: { assetId: string, newReturnDate: 'YYYY-MM-DD' }
+ * Customer requests a later return date for their current rental.
+ */
+export const requestExtension = async (req: Request, res: Response) => {
+  const { assetId, newReturnDate } = req.body;
+  if (!assetId || !newReturnDate) {
+    throw new ValidationError('assetId and newReturnDate are required');
+  }
+
+  const userId = auth.getUserId(req);
+  if (!userId) throw new AuthorisationError('Authentication required');
+
+  const asset = await Asset.findById(assetId);
+  if (!asset) throw new NotFoundError('Asset not found');
+
+  if (asset.status !== RENTED) {
+    throw new ValidationError('Only rented assets can be extended');
+  }
+  if (asset.rentedByUserId !== userId) {
+    throw new AuthorisationError('You can only request an extension for your own rental');
+  }
+  if (!asset.returnDate) {
+    throw new ValidationError('Current returnDate is missing on this asset');
+  }
+  if (asset.extensionRequestedReturnDate) {
+    throw new ValidationError('An extension request is already pending for this asset');
+  }
+  if (newReturnDate <= asset.returnDate) {
+    throw new ValidationError('newReturnDate must be later than the current returnDate');
+  }
+
+  asset.extensionRequestedReturnDate = newReturnDate;
+  await asset.save();
+  res.json(asset);
+};
+
+/**
+ * PATCH /api/assets/extension-request
+ * Body: { ids: string[], decision: 'approve' | 'deny' }
+ * Admin approves or denies pending extension requests.
+ */
+export const resolveExtensionRequests = async (req: Request, res: Response) => {
+  const { ids, decision } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ValidationError('ids must be a non-empty array');
+  }
+  if (decision !== 'approve' && decision !== 'deny') {
+    throw new ValidationError('decision must be "approve" or "deny"');
+  }
+
+  const userId = auth.getUserId(req);
+  if (!userId) throw new AuthorisationError('Authentication required');
+  const authUser = await auth.getUser(userId);
+  if (authUser.role !== 'admin') throw new AuthorisationError('Admin access required');
+
+  const assets = await Asset.find({ _id: { $in: ids } });
+  if (assets.length !== ids.length) {
+    throw new NotFoundError('One or more assets were not found');
+  }
+
+  for (const asset of assets) {
+    if (asset.status !== RENTED) {
+      throw new ValidationError(`Asset "${asset.name}" is not currently rented`);
+    }
+    if (!asset.extensionRequestedReturnDate) {
+      throw new ValidationError(`Asset "${asset.name}" has no pending extension request`);
+    }
+
+    if (decision === 'approve') {
+      asset.returnDate = asset.extensionRequestedReturnDate;
+    }
+    asset.extensionRequestedReturnDate = undefined;
+    await asset.save();
+  }
+
+  res.json(await enrichWithClerkUsers(assets));
 };
 
 /**
