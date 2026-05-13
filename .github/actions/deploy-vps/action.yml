@@ -94,4 +94,6 @@ runs:
           fi
           sudo cp /var/www/app/nginx.conf /etc/nginx/sites-available/app
           sudo ln -sfn /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
+          # Ubuntu package leaves default site enabled; it also uses server_name _ on :80 and wins over our app.
+          sudo rm -f /etc/nginx/sites-enabled/default
           sudo nginx -t && sudo systemctl reload nginx
