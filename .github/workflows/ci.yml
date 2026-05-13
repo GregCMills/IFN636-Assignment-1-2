@@ -124,6 +124,7 @@ jobs:
           username: ${{ secrets.DO_USER }}
           ssh_key: ${{ secrets.DO_SSH_KEY }}
           github_repository: ${{ github.repository }}
+          git_ref: ${{ github.ref_name }}
           vite_clerk_publishable_key: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
           prod_env: ${{ secrets.PROD }}
 
@@ -134,5 +135,6 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           ssh_key: ${{ secrets.EC2_SSH_KEY }}
           github_repository: ${{ github.repository }}
+          git_ref: ${{ github.ref_name }}
           vite_clerk_publishable_key: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
           prod_env: ${{ secrets.PROD }}
