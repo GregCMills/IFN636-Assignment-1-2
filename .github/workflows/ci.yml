@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - ops/load_balancing          # triggers the full pipeline (test + deploy) on merge
+      - main          # triggers the full pipeline (test + deploy) on merge
   pull_request:
     branches:
       - main          # triggers tests only on PRs targeting main
@@ -58,7 +58,7 @@ jobs:
   deploy:
     name: Deploy to EC2
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/load_balancing'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     steps:
       - name: Checkout Code
@@ -115,7 +115,7 @@ jobs:
   deploy-vps:
     name: Deploy to VPS
     needs: test                          # only runs if test job passes
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/load_balancing'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     steps:
       - name: Checkout (composite action from repo)
