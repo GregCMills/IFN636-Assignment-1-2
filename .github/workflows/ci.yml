@@ -111,7 +111,7 @@ jobs:
   deploy-vps:
     name: Deploy to VPS
     needs: test                          # only runs if test job passes
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/load_balancing'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (composite action from repo)
