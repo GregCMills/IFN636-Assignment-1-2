@@ -93,7 +93,7 @@ jobs:
       - name: Start and Restart PM2
         working-directory: ./backend
         run: |
-          pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
+          pm2 describe backend > /dev/null 2>&1 && pm2 restart backend --update-env || pm2 start "npm run start" --name="backend"
           sudo mkdir -p /var/www/app/frontend/dist
           sudo rm -rf /var/www/app/frontend/dist/*
           sudo cp -r ../frontend/dist/. /var/www/app/frontend/dist/

@@ -76,7 +76,7 @@ runs:
 
           # Restart PM2 processes
           cd /var/www/app/backend
-          pm2 describe backend > /dev/null 2>&1 && pm2 restart backend || pm2 start "npm run start" --name="backend"
+          pm2 describe backend > /dev/null 2>&1 && pm2 restart backend --update-env || pm2 start "npm run start" --name="backend"
           pm2 delete Frontend 2>/dev/null || true
           pm2 serve /var/www/app/frontend/dist 3000 --name="Frontend" --spa
           pm2 save
