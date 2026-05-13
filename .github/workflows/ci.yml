@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main          # triggers the full pipeline (test + deploy) on merge
+      - ops/load_balancing          # triggers the full pipeline (test + deploy) on merge
   pull_request:
     branches:
       - main          # triggers tests only on PRs targeting main
