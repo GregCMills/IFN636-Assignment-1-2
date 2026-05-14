@@ -3,13 +3,13 @@ import mongoose from "mongoose";
 /**
  * @module db
  * Establishes the Mongoose connection to MongoDB using the MONGO_URI environment
- * variable. The process exits with a non-zero code on connection failure so that
- * container orchestrators (e.g. Docker, Railway) restart the service automatically.
+ * variable. On failure, throws so production startup can exit non-zero and tests
+ * can surface the error clearly.
  */
 
 /**
  * Connects to the MongoDB instance specified by MONGO_URI.
- * Exits the process if the connection cannot be established.
+ * @throws If MONGO_URI is unset or the connection fails.
  *
  * @returns {Promise<void>}
  */
@@ -23,7 +23,7 @@ const connectDB = async (): Promise<void> => {
     console.log("MongoDB connected successfully");
   } catch (error: any) {
     console.error("MongoDB connection error:", error.message);
-    process.exit(1);
+    throw error;
   }
 };
 

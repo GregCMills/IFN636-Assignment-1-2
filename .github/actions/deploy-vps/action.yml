@@ -1,0 +1,101 @@
+name: Deploy to VPS (SSH)
+description: Install/build and restart app on one VPS via appleboy/ssh-action
+
+inputs:
+  host:
+    description: SSH hostname or IP
+    required: true
+  username:
+    description: SSH username
+    required: true
+  ssh_key:
+    description: SSH private key (PEM)
+    required: true
+  github_repository:
+    description: owner/repo for git clone
+    required: true
+  vite_clerk_publishable_key:
+    description: Vite/Clerk publishable key for frontend build
+    required: true
+  prod_env:
+    description: Full production backend .env contents
+    required: true
+  git_ref:
+    description: Branch to deploy (must match the branch that contains nginx.conf and app code)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Remote deploy
+      uses: appleboy/ssh-action@v1.2.0
+      env:
+        DEPLOY_REPO: ${{ inputs.github_repository }}
+        DEPLOY_GIT_REF: ${{ inputs.git_ref }}
+        DEPLOY_VITE_CLERK_PUBLISHABLE_KEY: ${{ inputs.vite_clerk_publishable_key }}
+        DEPLOY_PROD_ENV: ${{ inputs.prod_env }}
+      with:
+        host: ${{ inputs.host }}
+        username: ${{ inputs.username }}
+        key: ${{ inputs.ssh_key }}
+        envs: DEPLOY_REPO,DEPLOY_GIT_REF,DEPLOY_VITE_CLERK_PUBLISHABLE_KEY,DEPLOY_PROD_ENV
+        script: |
+          # Install Node.js 22 if not present
+          if ! command -v node &> /dev/null; then
+            curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+          fi
+
+          # Install PM2 globally if not present
+          if ! command -v pm2 &> /dev/null; then
+            sudo npm install -g pm2
+          fi
+
+          # Install nginx if not present
+          if ! command -v nginx &> /dev/null; then
+            sudo apt-get install -y nginx
+          fi
+
+          # App directory: /var/www is root-owned on fresh Ubuntu/EC2; deploy user must own it for git/npm.
+          sudo mkdir -p /var/www/app
+          sudo chown -R "$(whoami):$(whoami)" /var/www/app
+
+          if [ ! -d "/var/www/app/.git" ]; then
+            git clone https://github.com/$DEPLOY_REPO.git /var/www/app
+          fi
+
+          cd /var/www/app
+          git fetch origin "$DEPLOY_GIT_REF"
+          git reset --hard "origin/$DEPLOY_GIT_REF"
+
+          # Install dependencies and build backend + frontend
+          cd backend && npm ci && npm run build
+          cd ../frontend
+          VITE_CLERK_PUBLISHABLE_KEY=$DEPLOY_VITE_CLERK_PUBLISHABLE_KEY npm ci
+          VITE_CLERK_PUBLISHABLE_KEY=$DEPLOY_VITE_CLERK_PUBLISHABLE_KEY npm run build
+
+          # Write production .env
+          printf '%s' "$DEPLOY_PROD_ENV" > /var/www/app/backend/.env
+
+          # PM2 must run with explicit --cwd; restart preserves a wrong cwd (e.g. /home/ubuntu) and npm then ENOENT on package.json.
+          pm2 delete backend 2>/dev/null || true
+          pm2 start npm --name backend --cwd /var/www/app/backend -- run start
+          pm2 delete Frontend 2>/dev/null || true
+          pm2 serve /var/www/app/frontend/dist 3000 --name="Frontend" --spa
+          pm2 save
+          # pm2 startup prints instructions; the line to run often looks like "$ sudo env PATH=..." (the "$" is only a doc prompt).
+          # Piping "tail -1" straight into bash makes bash treat "$" as the command name → "$: command not found".
+          # We grep for the actual sudo line, strip an optional leading "$", then run it so systemd can resurrect PM2 after reboot.
+          pm2 startup 2>/dev/null | grep -E '^[[:space:]]*(\$$[[:space:]]+)?sudo env PATH=' | tail -n 1 | sed 's/^[[:space:]]*\$$[[:space:]]\{1,\}//' | sudo bash || true
+
+          if [ ! -f /var/www/app/nginx.conf ]; then
+            echo "Missing /var/www/app/nginx.conf after checkout of origin/$DEPLOY_GIT_REF"
+            exit 1
+          fi
+          BACKEND_PORT=$(awk -F= '/^PORT=/ { val=$2; gsub(/^[ \t"]+|[ \t"\r]+$/, "", val); print val; exit }' /var/www/app/backend/.env)
+          BACKEND_PORT=${BACKEND_PORT:-5001}
+          sed "s|http://localhost:5001|http://127.0.0.1:${BACKEND_PORT}|g" /var/www/app/nginx.conf | sudo tee /etc/nginx/sites-available/app > /dev/null
+          sudo ln -sfn /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
+          # Ubuntu package leaves default site enabled; it also uses server_name _ on :80 and wins over our app.
+          sudo rm -f /etc/nginx/sites-enabled/default
+          sudo nginx -t && sudo systemctl reload nginx
