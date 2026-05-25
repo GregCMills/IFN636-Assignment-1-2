@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "dev": "tsx watch server.ts",
+    "dev:test": "tsx watch server.ts --test",
     "prod": "node dist/server.js"
   },
   "dependencies": {

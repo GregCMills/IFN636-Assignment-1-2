@@ -15,14 +15,21 @@ import mongoose from "mongoose";
  */
 const connectDB = async (): Promise<void> => {
   try {
-    const mongoUri = process.env.MONGO_URI;
+    const useTestDb = process.argv.includes('--test');
+    const mongoUri = useTestDb ? process.env.TEST_MONGO_URI : process.env.MONGO_URI;
     if (!mongoUri) {
-      throw new Error("MONGO_URI environment variable is not defined");
+      throw new Error(
+        useTestDb
+          ? 'TEST_MONGO_URI environment variable is not defined (running in --test mode)'
+          : 'MONGO_URI environment variable is not defined'
+      );
     }
+    const dbName = new URL(mongoUri).pathname.slice(1) || '(default)';
+    console.log(`Connecting to MongoDB database: ${dbName}${useTestDb ? ' (test mode)' : ''}`);
     await mongoose.connect(mongoUri);
-    console.log("MongoDB connected successfully");
+    console.log(`MongoDB connected successfully → ${dbName}${useTestDb ? ' (test database)' : ''}`);
   } catch (error: any) {
-    console.error("MongoDB connection error:", error.message);
+    console.error('MongoDB connection error:', error.message);
     throw error;
   }
 };

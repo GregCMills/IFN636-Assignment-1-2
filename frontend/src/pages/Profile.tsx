@@ -1,6 +1,6 @@
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useState, useEffect } from 'react';
-import { Bug, RefreshCw } from 'lucide-react';
+import { Bug, RefreshCw, Copy, Check } from 'lucide-react';
 import axiosInstance from '../axiosConfig';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -16,6 +16,8 @@ const Profile = () => {
   const [resetLoading,  setResetLoading]  = useState(false);
   const [resetError,    setResetError]    = useState('');
   const [resetSuccess,  setResetSuccess]  = useState('');
+  const [bearerToken,   setBearerToken]   = useState('');
+  const [tokenCopied,   setTokenCopied]   = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -25,7 +27,14 @@ const Profile = () => {
       });
       setFormData({ address: res.data.address || '', phone: res.data.phone || '' });
     };
-    if (user) fetchProfile();
+    const fetchBearerToken = async () => {
+      const token = await getToken({ template: 'postman' });
+      if (token) setBearerToken(token);
+    };
+    if (user) {
+      fetchProfile();
+      fetchBearerToken();
+    }
   }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,6 +107,36 @@ const Profile = () => {
             Update Profile
           </button>
         </form>
+      </div>
+
+      {/* ── API Bearer Token ────────────────────────────────────────────────── */}
+      <div className="card p-6">
+        <p className="font-medium text-text-primary text-sm mb-1">API Bearer Token</p>
+        <p className="text-text-subtle text-xs mb-3">
+          Copy this token into Postman's Authorization tab (Bearer Token).
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            readOnly
+            value={bearerToken || 'Loading token…'}
+            className="input-base text-xs font-mono flex-1 select-all truncate"
+          />
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(bearerToken);
+              setTokenCopied(true);
+              setTimeout(() => setTokenCopied(false), 2000);
+            }}
+            disabled={!bearerToken}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+                       border border-border-default hover:bg-surface-elevated/60 transition shrink-0
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {tokenCopied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+            {tokenCopied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
       </div>
 
       {/* ── Admin debug tools ────────────────────────────────────────────────── */}
