@@ -2,8 +2,9 @@
 
 This report identifies and analyses software design patterns from the
 [Refactoring.Guru catalog](https://refactoring.guru/design-patterns/catalog)
-that appear in the backend of this project. The backend is a Node.js / Express
-5 / Mongoose / Clerk application that manages an equipment rental system.
+that appear in the backend of this project. The backend is a TypeScript /
+Express 5 / Mongoose / Clerk application that manages an equipment rental
+system.
 
 Each pattern is classified as either **Confirmed** (a clear, textbook-like
 implementation) or **Partial** (the spirit is present, but some elements differ
@@ -17,17 +18,18 @@ implementation.
 
 | # | Pattern | Category | Status | Key Files |
 |---|---------|----------|--------|-----------|
-| 1 | [Singleton](#1-singleton) | Creational | Confirmed | `server.js`, `models/*.js`, `config/db.js`, `services/auth/ClerkAuthAdapter.js`, `services/photo/PhotoService.js` |
-| 2 | [Facade](#2-facade) | Structural | Confirmed | `server.js`, `controllers/assetController.js`, `services/photo/PhotoService.js` |
-| 3 | [Adapter](#3-adapter) | Structural | Confirmed | `services/auth/AuthAdapter.js`, `services/auth/ClerkAuthAdapter.js`, `models/*.js` |
-| 4 | [Decorator](#4-decorator) | Structural | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js`, `server.js` |
-| 5 | [Chain of Responsibility](#5-chain-of-responsibility) | Behavioral | Confirmed | `services/auth/ClerkAuthAdapter.js`, `routes/*.js`, `services/errors/AppError.js`, `middleware/uploadMiddleware.js`, `server.js` |
-| 6 | [Template Method](#6-template-method) | Behavioral | Confirmed | `services/asset-states/AssetState.js`, `services/inventory/InventoryComponent.js` |
-| 7 | [State](#7-state) | Behavioral | Confirmed | `services/asset-states/*.js` |
-| 8 | [Strategy](#8-strategy) | Behavioral | Confirmed | `services/asset-states/TransitionAuthoriser.js`, `services/photo/storage/*.js` |
-| 9 | [Composite](#9-composite) | Structural | Confirmed | `services/inventory/*.js` |
-| 10 | [Factory Method](#10-factory-method) | Creational | Confirmed | `services/photo/handlers/*.js` |
-| 11 | [Builder](#11-builder) | Creational | Confirmed | `services/photo/ProcessedPhotoBuilder.js`, `services/photo/PhotoProcessingDirector.js` |
+| 1 | [Singleton](#1-singleton) | Creational | Confirmed | `server.ts`, `models/*.ts`, `config/db.ts`, `services/auth/ClerkAuthAdapter.ts`, `services/photo/PhotoService.ts`, `services/entity/EntityService.ts`, `services/rental-history/RentalHistoryObserver.ts` |
+| 2 | [Facade](#2-facade) | Structural | Confirmed | `server.ts`, `controllers/assetController.ts`, `services/photo/PhotoService.ts`, `services/entity/EntityService.ts` |
+| 3 | [Adapter](#3-adapter) | Structural | Confirmed | `services/auth/AuthAdapter.ts`, `services/auth/ClerkAuthAdapter.ts`, `models/*.ts` |
+| 4 | [Decorator](#4-decorator) | Structural | Confirmed | `services/auth/ClerkAuthAdapter.ts`, `routes/*.ts`, `server.ts`, `services/pricing/PricingStrategy.ts` |
+| 5 | [Chain of Responsibility](#5-chain-of-responsibility) | Behavioral | Confirmed | `services/auth/ClerkAuthAdapter.ts`, `routes/*.ts`, `services/errors/AppError.ts`, `middleware/uploadMiddleware.ts`, `server.ts` |
+| 6 | [Template Method](#6-template-method) | Behavioral | Confirmed | `services/asset-states/AssetState.ts`, `services/inventory/InventoryComponent.ts` |
+| 7 | [State](#7-state) | Behavioral | Confirmed | `services/asset-states/*.ts` |
+| 8 | [Strategy](#8-strategy) | Behavioral | Confirmed | `services/asset-states/TransitionAuthoriser.ts`, `services/photo/storage/*.ts` |
+| 9 | [Composite](#9-composite) | Structural | Confirmed | `services/inventory/*.ts` |
+| 10 | [Factory Method](#10-factory-method) | Creational | Confirmed | `services/photo/handlers/*.ts` |
+| 11 | [Builder](#11-builder) | Creational | Confirmed | `services/photo/ProcessedPhotoBuilder.ts`, `services/photo/PhotoProcessingDirector.ts` |
+| 12 | [Observer](#12-observer) | Behavioral | Confirmed | `services/rental-history/RentalHistoryObserver.ts` |
 
 ---
 
@@ -41,59 +43,60 @@ implementation.
 
 ### How it appears in this codebase
 
-Node.js modules are singletons by default. When a module is `require()`'d for
-the first time its top-level code runs once; the result is cached and the same
-object is returned on every subsequent `require()`. The backend relies on this
+Node.js modules are singletons by default. When a module is imported for the
+first time its top-level code runs once; the result is cached and the same
+object is returned on every subsequent import. The backend relies on this
 mechanism in several places.
 
-#### 1a. The Express application (`server.js`)
+#### 1a. The Express application (`server.ts`)
 
-```js
+```ts
 const app = express();
 ```
 
-`app` is created once at module scope. Every other module that does
-`require('../server')` (e.g. the test suite) receives the exact same Express
-instance. The module uses a `require.main === module` guard so the server only
-starts listening when run directly, not when imported by tests.
+`app` is created once at module scope. Every other module that imports
+`server.ts` (e.g. the test suite) receives the exact same Express instance. The
+module uses a `require.main === module` guard so the server only starts
+listening when run directly, not when imported by tests.
 
-#### 1b. Mongoose models (`models/*.js`)
+#### 1b. Mongoose models (`models/*.ts`)
 
-```js
-module.exports = mongoose.model('Asset', assetSchema);
+```ts
+export default model<IRentalHistory>('RentalHistory', rentalHistorySchema);
 ```
 
-`mongoose.model()` registers the model name on the global Mongoose connection.
+`model()` registers the model name on the global Mongoose connection.
 Subsequent calls with the same name return the existing compiled model. Each
 model file is evaluated only once by Node's module cache, so every controller
-that does `require('../models/Asset')` receives the same model constructor.
+that imports a model receives the same model constructor.
 
-This applies to all four models:
+This applies to all five models:
 
-- `models/Asset.js` — `Asset`
-- `models/AssetType.js` — `AssetType`
-- `models/ProductGroup.js` — `ProductGroup`
-- `models/User.js` — `User`
+- `models/Asset.ts` — `Asset`
+- `models/AssetType.ts` — `AssetType`
+- `models/ProductGroup.ts` — `ProductGroup`
+- `models/User.ts` — `User`
+- `models/RentalHistory.ts` — `RentalHistory`
 
-#### 1c. The database connection (`config/db.js`)
+#### 1c. The database connection (`config/db.ts`)
 
-The `connectDB` function is created once and shared across `server.js` and the
+The `connectDB` function is created once and shared across `server.ts` and the
 test setup. The underlying Mongoose connection it establishes is also a
 singleton — Mongoose maintains a single default connection object.
 
-#### 1d. The auth adapter (`services/auth/ClerkAuthAdapter.js`)
+#### 1d. The auth adapter (`services/auth/ClerkAuthAdapter.ts`)
 
-```js
-module.exports = new ClerkAuthAdapter();
+```ts
+export default new ClerkAuthAdapter();
 ```
 
 The authentication adapter is exported as a singleton instance. Every file that
-does `require('../services/auth/ClerkAuthAdapter')` receives the exact same
-object — controllers, route files, and `server.js` all share one adapter.
+imports `ClerkAuthAdapter` receives the exact same object — controllers, route
+files, and `server.ts` all share one adapter.
 
-#### 1e. State singletons (`services/asset-states/AssetStateMachine.js`)
+#### 1e. State singletons (`services/asset-states/AssetStateMachine.ts`)
 
-```js
+```ts
 const STATE_MAP = {
   'Available':       new AvailableState(),
   'Pending Rental':  new PendingRentalState(),
@@ -106,23 +109,59 @@ const STATE_MAP = {
 The five concrete state objects are instantiated once inside `AssetStateMachine`
 and shared across all requests.
 
-#### 1f. The photo service (`services/photo/PhotoService.js`)
+#### 1f. The photo service (`services/photo/PhotoService.ts`)
 
-```js
-module.exports = new PhotoService();
+```ts
+export default new PhotoService();
 ```
 
-The PhotoService is exported as a singleton instance (same pattern as
-`ClerkAuthAdapter`). Every module that does `require('../services/photo/PhotoService')`
-receives the same object — controllers, route files, and the Composite delete
-method all share one `PhotoService` (and therefore one `StorageStrategy`).
+The `PhotoService` is exported as a singleton instance (same pattern as
+`ClerkAuthAdapter`). Every module that imports `PhotoService` receives the same
+object — controllers, route files, and the Composite delete method all share
+one `PhotoService` (and therefore one `StorageStrategy`).
+
+#### 1g. The entity service (`services/entity/EntityService.ts`)
+
+```ts
+export default new EntityService();
+```
+
+The `EntityService` is exported as a singleton instance (same pattern as
+`PhotoService`). The controller imports it and delegates `updateEntity()` calls
+to the shared instance.
+
+#### 1h. The rental completion subject (`services/rental-history/RentalHistoryObserver.ts`)
+
+```ts
+export const rentalCompletionSubject = new RentalCompletionSubject();
+rentalCompletionSubject.subscribe(new MongoRentalHistoryRecorder());
+```
+
+The `RentalCompletionSubject` singleton is created at module scope and
+immediately subscribed with a `MongoRentalHistoryRecorder`. The controller
+imports this one subject and calls `notify()` to broadcast rental completion
+events to all subscribed observers.
+
+#### 1i. Photo handler instances (`services/photo/handlers/PhotoHandlerFactory.ts`)
+
+```ts
+const handlers: Record<string, EntityPhotoHandler> = {
+  group: new GroupPhotoHandler(),
+  type:  new TypePhotoHandler(),
+  asset: new AssetPhotoHandler(),
+};
+```
+
+The three handler instances are created once and cached. `PhotoHandlerFactory`
+returns the same handler object on every `create()` call, so all photo
+operations share the same three handler singletons.
 
 ### Evaluation
 
 Confirmed. The Singleton is achieved through Node.js module caching rather than
 the classic private-constructor + `getInstance()` pattern. This is the idiomatic
-approach in JavaScript and is fully consistent with the Singleton intent: one
-shared instance with a global access point.
+approach in JavaScript/TypeScript and is fully consistent with the Singleton
+intent: one shared instance with a global access point.
 
 ---
 
@@ -136,34 +175,35 @@ shared instance with a global access point.
 
 ### How it appears in this codebase
 
-#### 2a. Application entry point (`server.js`)
+#### 2a. Application entry point (`server.ts`)
 
-`server.js` acts as a facade for the entire backend subsystem. In approximately
-35 lines it wires together:
+`server.ts` acts as a facade for the entire backend subsystem. It wires together:
 
 - Environment configuration (`dotenv`)
-- Database connection (`config/db.js`)
+- Database connection (`config/db.ts`)
 - Authentication middleware (`@clerk/express`)
 - CORS policy
 - JSON body parsing
+- Static file serving for uploads
 - Four route modules (`authRoutes`, `groupRoutes`, `typeRoutes`, `assetRoutes`)
 
-```js
+```ts
 app.use(auth.contextMiddleware());
 app.use(cors());
 app.use(express.json());
-app.use('/api/auth',   require('./routes/authRoutes'));
-app.use('/api/groups', require('./routes/groupRoutes'));
-app.use('/api/types',  require('./routes/typeRoutes'));
-app.use('/api/assets', require('./routes/assetRoutes'));
+app.use('/uploads', express.static(UPLOADS_ROOT));
+app.use('/api/auth',   authRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/types',  typeRoutes);
+app.use('/api/assets', assetRoutes);
 ```
 
 Any external consumer (e.g. the test suite via `supertest`, or Nginx via the
-reverse proxy) only needs to `require('./server')` to get a fully configured
+reverse proxy) only needs to import `server.ts` to get a fully configured
 application. All internal complexity — middleware ordering, route mounting,
 database initialisation — is hidden behind this single file.
 
-#### 2b. Clerk user enrichment (`controllers/assetController.js`)
+#### 2b. Clerk user enrichment (`controllers/assetController.ts`)
 
 The `enrichWithClerkUsers` helper function is a facade over user enrichment:
 
@@ -177,13 +217,13 @@ Controller functions simply call `await enrichWithClerkUsers(assets)` without
 knowing anything about the underlying auth provider, its API, or its data
 format.
 
-#### 2c. Photo service (`services/photo/PhotoService.js`)
+#### 2c. Photo service (`services/photo/PhotoService.ts`)
 
 The `PhotoService` is a facade over the photo subsystem. It exposes three
 methods — `uploadPhoto()`, `deletePhoto()`, and `getPhotoUrl()` — and hides
 behind them the complexity of:
 
-- **Storage strategy** — file system operations (save/delete/getUrl)
+- **Storage strategy** — file system or S3 operations (save/delete/getUrl)
 - **Image processing** — resizing and thumbnail generation via `sharp`
 - **Entity handlers** — Mongoose model queries for photo URLs per entity type
 
@@ -191,7 +231,7 @@ Controllers call `photoService.uploadPhoto('group', id, req.file)` without
 knowing how files are stored, how images are processed, or which Mongoose
 model is being updated.
 
-#### 2d. Entity service (`services/entity/EntityService.js`)
+#### 2d. Entity service (`services/entity/EntityService.ts`)
 
 The `EntityService` is a facade over entity data mutations. It exposes a
 single method — `updateEntity()` — and hides behind it the complexity of:
@@ -205,7 +245,7 @@ persisted.
 
 ### Evaluation
 
-Confirmed. Four independent facades coexist: `server.js` (infrastructure),
+Confirmed. Four independent facades coexist: `server.ts` (infrastructure),
 `enrichWithClerkUsers` (user data), `PhotoService` (photo operations), and
 `EntityService` (entity data mutations). Each hides a different subsystem
 behind a simple interface.
@@ -228,7 +268,7 @@ Each model defines a `toJSON` schema option that adapts Mongoose's internal
 document representation (which uses `_id`, `__v`, and `ObjectId` objects) into
 the clean JSON format expected by the frontend.
 
-```js
+```ts
 assetSchema.set('toJSON', {
   transform: (_, ret) => {
     ret.id     = ret._id.toString();
@@ -240,10 +280,14 @@ assetSchema.set('toJSON', {
 });
 ```
 
-The same pattern appears in `AssetType.js` and `ProductGroup.js`. Without these
-adapters, the frontend would receive raw `ObjectId` objects and MongoDB-internal
-fields. Fields like `name` and the newly-added `description` pass through
-unchanged because they are plain strings.
+The same pattern appears in `AssetType.ts`, `ProductGroup.ts`, and
+`RentalHistory.ts`. Without these adapters, the frontend would receive raw
+`ObjectId` objects and MongoDB-internal fields. Fields like `name` and
+`description` pass through unchanged because they are plain strings.
+
+The `RentalHistory` model's transform is the most comprehensive — it converts
+both `assetId` and `typeId` to strings and strips `createdAt`/`updatedAt` in
+addition to `_id`/`__v`.
 
 #### 3b. Auth adapter (`services/auth/`)
 
@@ -251,14 +295,14 @@ The `ClerkAuthAdapter` is a comprehensive Adapter over the Clerk authentication
 provider. `AuthAdapter` defines the target interface; `ClerkAuthAdapter`
 implements it for Clerk:
 
-```js
-class AuthAdapter {
-  contextMiddleware() { throw new Error('Not implemented'); }
-  requireAuth()       { throw new Error('Not implemented'); }
-  adminOnly()         { throw new Error('Not implemented'); }
-  getUserId(req)      { throw new Error('Not implemented'); }
-  async getUser(id)   { throw new Error('Not implemented'); }
-  async getUsers(ids) { throw new Error('Not implemented'); }
+```ts
+abstract class AuthAdapter {
+  abstract contextMiddleware(): RequestHandler;
+  abstract requireAuth(): RequestHandler;
+  abstract adminOnly(): RequestHandler;
+  abstract getUserId(req: Request): string | null;
+  abstract getUser(userId: string): Promise<NormalisedUser>;
+  abstract getUsers(userIds: string[]): Promise<Record<string, NormalisedUser>>;
 }
 ```
 
@@ -270,7 +314,7 @@ The adapter translates three kinds of Clerk coupling:
 | Request auth | `req.auth` is a function in v2, object in v1 | `getUserId(req)` | `string \| null` |
 | User data | `emailAddresses[0]`, `firstName`/`lastName`, `publicMetadata.role` | `getUser()` / `getUsers()` | `{ id, email, name, role }` |
 
-No consumer outside `ClerkAuthAdapter.js` imports from `@clerk/express`.
+No consumer outside `ClerkAuthAdapter.ts` imports from `@clerk/express`.
 Replacing Clerk with Auth0, Firebase Auth, or any other provider requires only
 a new adapter class — zero changes to controllers, routes, or business logic.
 
@@ -278,8 +322,8 @@ a new adapter class — zero changes to controllers, routes, or business logic.
 
 | File | Role |
 |------|------|
-| `services/auth/AuthAdapter.js` | Base class — defines the adapter interface |
-| `services/auth/ClerkAuthAdapter.js` | Concrete adapter — translates Clerk API calls |
+| `services/auth/AuthAdapter.ts` | Base class — defines the adapter interface |
+| `services/auth/ClerkAuthAdapter.ts` | Concrete adapter — translates Clerk API calls |
 
 ### Evaluation
 
@@ -301,13 +345,16 @@ singleton and never see Clerk internals.
 
 ### How it appears in this codebase
 
+The Decorator pattern appears in two independent contexts: Express middleware
+wrapping and the pricing calculation chain.
+
+#### 4a. Express middleware — application-level decorators (`server.ts`)
+
 Express middleware is a classic implementation of the Decorator pattern. Each
 middleware function wraps the request/response cycle and adds behaviour without
 changing the core handler's interface (the `(req, res, next)` signature).
 
-#### 4a. Application-level decorators (`server.js`)
-
-```js
+```ts
 app.use(auth.contextMiddleware());  // decorates every request with auth context
 app.use(cors());                    // decorates every response with CORS headers
 app.use(express.json());            // decorates every request with parsed JSON body
@@ -316,9 +363,9 @@ app.use(express.json());            // decorates every request with parsed JSON 
 Each `app.use()` call adds a decorator to the request pipeline. The decorators
 are composable and can be reordered independently.
 
-#### 4b. Route-level decorators (`routes/*.js`)
+#### 4b. Express middleware — route-level decorators (`routes/*.ts`)
 
-```js
+```ts
 router.post('/', auth.requireAuth(), auth.adminOnly(), createAsset);
 ```
 
@@ -333,12 +380,108 @@ behaviours:
 Only after both decorators pass does the request reach the actual controller.
 This pattern repeats across all route files.
 
+#### 4c. Pricing decorator chain (`services/pricing/PricingStrategy.ts`)
+
+A second, independent Decorator implementation handles rental cost calculation.
+This is a textbook object-oriented Decorator with a concrete component, an
+abstract decorator, and two concrete decorators:
+
+**The common interface:**
+
+```ts
+export interface PricingStrategy {
+  calculate(days: number): number;
+  describe(): string;
+}
+```
+
+**Concrete component — base price:**
+
+```ts
+export class BasePricing implements PricingStrategy {
+  constructor(private readonly pricePerDay: number) {}
+  calculate(days: number): number {
+    if (days <= 0) return 0;
+    return this.pricePerDay * days;
+  }
+  describe(): string { return `Base: $${this.pricePerDay}/day`; }
+}
+```
+
+**Abstract decorator — wraps another `PricingStrategy`:**
+
+```ts
+export abstract class PricingDecorator implements PricingStrategy {
+  constructor(protected readonly wrapped: PricingStrategy) {}
+  abstract calculate(days: number): number;
+  abstract describe(): string;
+}
+```
+
+**Concrete decorators:**
+
+| Decorator | Behaviour | Threshold |
+|-----------|-----------|-----------|
+| `WeeklyDiscountDecorator` | 10% off | Rentals ≥ 7 days |
+| `LongTermDiscountDecorator` | 15% off | Rentals ≥ 30 days |
+
+Each decorator wraps another `PricingStrategy` and applies its discount
+conditionally. The `calculate()` method delegates to the wrapped strategy
+first, then modifies the result:
+
+```ts
+export class WeeklyDiscountDecorator extends PricingDecorator {
+  calculate(days: number): number {
+    const base = this.wrapped.calculate(days);
+    if (days >= 7) return base * 0.90;
+    return base;
+  }
+}
+```
+
+**The helper that builds the standard chain:**
+
+```ts
+export const buildDefaultPricingChain = (pricePerDay: number): PricingStrategy => {
+  return new LongTermDiscountDecorator(
+    new WeeklyDiscountDecorator(
+      new BasePricing(pricePerDay)
+    )
+  );
+};
+```
+
+The decoration order is `LongTerm(Weekly(Base(price)))`. Reading inside-out:
+compute base price, then apply weekly discount if eligible, then apply long-term
+discount if eligible. Both discounts compose naturally — a 30-day rental gets
+both the 10% weekly discount and the 15% long-term discount applied
+sequentially.
+
+**Controller integration:**
+
+The `calculateRentalCost` handler in `assetController.ts` uses the decorator
+chain:
+
+```ts
+const chain   = buildDefaultPricingChain(pricePerDay);
+const perUnit = chain.calculate(days);
+```
+
+Adding a future pricing rule (e.g. member discount, seasonal pricing, peak
+surcharge) means creating one new `PricingDecorator` subclass and inserting it
+into the chain — no changes to existing decorators or the controller.
+
 ### Evaluation
 
-Confirmed. Express middleware is one of the most widely recognised real-world
-uses of the Decorator pattern in the JavaScript ecosystem. Each decorator has a
-single responsibility (authentication, authorisation, CORS, body parsing) and
-they compose naturally through the middleware stack.
+Confirmed. Two independent Decorator pattern instances coexist:
+
+1. **Express middleware** — one of the most widely recognised real-world uses of
+   the Decorator pattern in the JavaScript ecosystem. Each decorator has a
+   single responsibility (authentication, authorisation, CORS, body parsing) and
+   they compose naturally through the middleware stack.
+2. **Pricing chain** — a textbook object-oriented Decorator with a common
+   interface, concrete component, abstract decorator, and multiple concrete
+   decorators that stack dynamically at runtime.
 
 ---
 
@@ -359,9 +502,9 @@ handler receives the request, performs its work, and calls `next()` to pass
 control to the next handler. A handler can **short-circuit** the chain by
 sending a response instead of calling `next()`.
 
-#### 5a. The `adminOnly` handler (`services/auth/ClerkAuthAdapter.js`)
+#### 5a. The `adminOnly` handler (`services/auth/ClerkAuthAdapter.ts`)
 
-```js
+```ts
 adminOnly() {
   return async (req, res, next) => {
     try {
@@ -387,7 +530,7 @@ This is a textbook Chain of Responsibility handler:
 
 #### 5b. Per-route handler chains
 
-```js
+```ts
 router.post('/', auth.requireAuth(), auth.adminOnly(), createAsset);
 ```
 
@@ -402,17 +545,17 @@ auth.requireAuth() → auth.adminOnly() → createAsset
 2. `auth.adminOnly()` checks authorisation. Non-admin → `403`, chain stops.
 3. `createAsset` is the terminal handler — it processes the business logic.
 
-#### 5c. Error hierarchy as an extension of the chain (`services/errors/AppError.js`)
+#### 5c. Error hierarchy as an extension of the chain (`services/errors/AppError.ts`)
 
 The custom error class hierarchy (`AppError`, `ValidationError`, `NotFoundError`,
 `AuthorisationError`, `AuthenticationError`) extends the Chain of Responsibility
-by enriching the terminal error handler in `server.js`.
+by enriching the terminal error handler in `server.ts`.
 
 Each error class carries its own `statusCode`:
 
-```js
+```ts
 class AppError extends Error {
-  constructor(message, statusCode = 500) {
+  constructor(message: string, statusCode = 500) {
     super(message);
     this.statusCode = statusCode;
   }
@@ -428,7 +571,7 @@ instead of calling `res.status(404).json(...)`. Express 5 catches the thrown
 error and passes it to the global error-handling middleware — the **terminal
 handler** in the chain:
 
-```js
+```ts
 app.use((err, req, res, next) => {
   const status = err instanceof AppError ? err.statusCode : 500;
   const message = status < 500 ? err.message : 'Internal server error';
@@ -450,11 +593,10 @@ This pattern separates HTTP concerns from business logic. Controllers express
 error conditions declaratively (`throw new NotFoundError(...)`) and the global
 handler translates error types into HTTP responses in one place.
 
-Adding `PATCH /:id` routes for entity name/description updates extends the
-same chain pattern — the new routes follow the identical `auth.requireAuth()`,
+Entity update routes follow the identical `auth.requireAuth()`,
 `auth.adminOnly()` sequence before reaching the controller:
 
-```js
+```ts
 router.patch('/:id', auth.requireAuth(), auth.adminOnly(), updateEntity('group'));
 ```
 
@@ -467,16 +609,16 @@ auth.requireAuth() → auth.adminOnly() → updateEntity
 1. `auth.requireAuth()` — checks authentication (401 if unauthenticated).
 2. `auth.adminOnly()` — checks admin role (403 if not admin).
 3. `updateEntity('group')` — the terminal handler: validates input and updates
-   the entity via PhotoService.
+   the entity via EntityService.
 
 All three entity types (groups, types, assets) share the same chain structure,
 differing only in the entity type string passed to the controller factory.
 
-#### 5d. Upload validation chain (`middleware/uploadMiddleware.js`)
+#### 5d. Upload validation chain (`middleware/uploadMiddleware.ts`)
 
 Photo upload routes add two new links to the middleware chain:
 
-```js
+```ts
 router.post('/:id/photo', auth.requireAuth(), auth.adminOnly(),
             upload.single('photo'), validateFileType, uploadPhoto('group'));
 ```
@@ -528,16 +670,16 @@ the separation between authentication (`auth.requireAuth()`) and authorisation
 
 ### How it appears in this codebase
 
-#### 6a. `AssetState` base class (`services/asset-states/AssetState.js`)
+#### 6a. `AssetState` base class (`services/asset-states/AssetState.ts`)
 
 The `AssetState` base class defines the `canTransitionTo()` algorithm skeleton:
 
-```js
-class AssetState {
-  getName()                              { throw new Error('Not implemented'); }
-  getValidTransitions()                  { return []; }
-  canTransitionTo(newStatus)             { return this.getValidTransitions().includes(newStatus); }
-  shouldClearRentalData(_newStatus)      { return false; }
+```ts
+abstract class AssetState {
+  abstract getName(): string;
+  getValidTransitions(): string[]          { return []; }
+  canTransitionTo(newStatus: string): boolean { return this.getValidTransitions().includes(newStatus); }
+  shouldClearRentalData(newStatus: string): boolean { return false; }
 }
 ```
 
@@ -558,31 +700,24 @@ Similarly, `shouldClearRentalData()` defaults to `false` in the base class, but
 `PendingRentalState` and `PendingReturnState` override it to return `true` for
 specific transitions — another primitive operation in the template.
 
-#### 6b. `InventoryComponent` base class (`services/inventory/InventoryComponent.js`)
+#### 6b. `InventoryComponent` base class (`services/inventory/InventoryComponent.ts`)
 
-The `InventoryComponent` base class now provides Template Methods for the two
+The `InventoryComponent` base class provides Template Methods for the two
 core Composite operations:
 
-```js
-class InventoryComponent {
-  getId()                   { throw new Error('Not implemented'); }
-  getName()                 { throw new Error('Not implemented'); }
-  getChildren()             { return []; }        // leaf-safe default
+```ts
+abstract class InventoryComponent {
+  abstract getId(): string;
+  abstract getName(): string;
+  getChildren(): InventoryComponent[]             { return []; }        // leaf-safe default
 
-  // Helper: collect own photo paths (shared by all subclasses)
-  _collectOwnPhotoPaths()   { /* imageUrl + thumbnailUrl */ }
+  _collectOwnPhotoPaths(): string[]               { /* imageUrl + thumbnailUrl */ }
+  async _deleteOwnPhotos(storageStrategy): Promise<void> { /* ... */ }
 
-  // Helper: delete own photos via storage strategy
-  async _deleteOwnPhotos(storageStrategy) { /* ... */ }
+  getPhotoPaths(): string[]          { /* calls _collectOwnPhotoPaths → recurses via getChildren() */ }
+  async delete(storageStrategy): Promise<void> { /* recurses via getChildren() → _deleteOwnPhotos → _deleteSelf */ }
 
-  // Template Method: collect own photos, then recurse into children
-  getPhotoPaths() { /* calls _collectOwnPhotoPaths → recurses via getChildren() */ }
-
-  // Template Method: delete children first (bottom-up), then own photos, then self
-  async delete(storageStrategy) { /* recurses via getChildren() → _deleteOwnPhotos → _deleteSelf */ }
-
-  // Primitive operation: subclasses override to call their model's findByIdAndDelete
-  async _deleteSelf()        { throw new Error('Not implemented'); }
+  abstract _deleteSelf(): Promise<void>;
 }
 ```
 
@@ -640,11 +775,11 @@ The base class defines the State contract (see [§6a](#6a-assetstate-base-class)
 
 | File | Class | Valid transitions from this state |
 |------|-------|----------------------------------|
-| `AvailableState.js` | `AvailableState` | → Pending Rental, Maintenance |
-| `PendingRentalState.js` | `PendingRentalState` | → Rented, Available |
-| `RentedState.js` | `RentedState` | → Pending Return, Maintenance |
-| `PendingReturnState.js` | `PendingReturnState` | → Available, Rented, Maintenance |
-| `MaintenanceState.js` | `MaintenanceState` | → Available |
+| `AvailableState.ts` | `AvailableState` | → Pending Rental, Maintenance |
+| `PendingRentalState.ts` | `PendingRentalState` | → Rented, Available |
+| `RentedState.ts` | `RentedState` | → Pending Return, Maintenance |
+| `PendingReturnState.ts` | `PendingReturnState` | → Available, Rented, Maintenance |
+| `MaintenanceState.ts` | `MaintenanceState` | → Available |
 
 Each state also defines `shouldClearRentalData()` to indicate whether rental
 metadata should be cleared when transitioning to a given target state. For
@@ -653,22 +788,22 @@ example, `PendingReturnState` clears rental data when transitioning to
 
 #### 7c. The Context (`AssetStateMachine`)
 
-```js
+```ts
 class AssetStateMachine {
-  constructor(currentStatus) {
+  constructor(currentStatus: string) {
     const state = STATE_MAP[currentStatus];
     if (!state) throw new Error(`Unknown status: ${currentStatus}`);
     this._state = state;
   }
 
-  canTransitionTo(newStatus, authoriser) { /* delegates to state + authoriser */ }
-  getValidTransitions()                   { return this._state.getValidTransitions(); }
-  shouldClearRentalData(newStatus)        { return this._state.shouldClearRentalData(newStatus); }
+  canTransitionTo(newStatus: string, authoriser: TransitionAuthoriser) { /* delegates to state + authoriser */ }
+  getValidTransitions(): string[]                   { return this._state.getValidTransitions(); }
+  shouldClearRentalData(newStatus: string): boolean  { return this._state.shouldClearRentalData(newStatus); }
 }
 ```
 
 The context wraps the current status string and delegates all behaviour to the
-appropriate state singleton. The `STATE_MAP` (see [§1e](#1e-state-singletons-servicesasset-statesassetstatemachinejs))
+appropriate state singleton. The `STATE_MAP` (see [§1e](#1e-state-singletons-servicesasset-statesassetstatemachinets))
 maps each status string to its singleton state object.
 
 #### 7d. State machine transitions
@@ -677,18 +812,18 @@ maps each status string to its singleton state object.
 Available ────────→ Pending Rental ──→ Rented ──→ Pending Return ──→ Available
     │                      │              │              │
     └──→ Maintenance        └──→ Available └──→ Maintenance └──→ Rented
-                                                                 └──→ Maintenance
-                                                 Maintenance ──→ Available
+                                                                  └──→ Maintenance
+                                                  Maintenance ──→ Available
 ```
 
 #### 7e. Controller integration
 
-The controller (`assetController.js`) integrates the State pattern in the
+The controller (`assetController.ts`) integrates the State pattern in the
 `bulkUpdateStatus` handler for two purposes:
 
 **Transition validation:**
 
-```js
+```ts
 const assets = await Asset.find({ _id: { $in: ids } });
 
 for (const asset of assets) {
@@ -703,25 +838,23 @@ for (const asset of assets) {
 
 **Rental data clearing (state-machine-driven):**
 
-```js
+```ts
 let shouldClear;
 if (clearRentalData !== undefined) {
-  // Client explicitly specified — use their value (backward compatible)
   shouldClear = clearRentalData === true;
 } else {
-  // No client preference — ask the state machine.
-  // All assets share the same transition so any machine gives the same answer.
   const machine = new AssetStateMachine(assets[0].status);
   shouldClear = machine.shouldClearRentalData(status);
 }
 ```
 
-The `shouldClearRentalData()` method is now **wired into the controller** as a
-default. If the client sends an explicit `clearRentalData` flag, that value
-takes precedence. Otherwise, the state machine's encapsulated knowledge of
-transition side effects determines whether rental data is cleared. For example,
-`PendingReturnState → Available` automatically clears `rentedByUserId` and
-`returnDate` without the client needing to specify it.
+The `shouldClearRentalData()` method is wired into the controller as a default.
+If the client sends an explicit `clearRentalData` flag, that value takes
+precedence. Otherwise, the state machine's encapsulated knowledge of transition
+side effects determines whether rental data is cleared. For example,
+`PendingReturnState → Available` automatically clears `rentedByUserId`,
+`rentedAt`, `returnDate`, and `extensionRequestedReturnDate` without the client
+needing to specify it.
 
 ### Why State
 
@@ -762,10 +895,10 @@ Confirmed. The implementation satisfies all three textbook requirements:
 
 #### 8a. The Strategy interface (`TransitionAuthoriser`)
 
-```js
-class TransitionAuthoriser {
-  canTransition(fromStatus, toStatus) { throw new Error('Not implemented'); }
-  verifyOwnership(asset, userId)      { throw new Error('Not implemented'); }
+```ts
+export interface TransitionAuthoriser {
+  canTransition(currentStatus: string, newStatus: string): boolean;
+  verifyOwnership(asset: any, userId: string): boolean;
 }
 ```
 
@@ -781,13 +914,13 @@ class TransitionAuthoriser {
 The controller selects an authorisation strategy at runtime based on the user's
 role:
 
-```js
+```ts
 const authoriser = isAdmin ? new AdminAuthoriser() : new CustomerAuthoriser();
 ```
 
 Then calls the uniform interface:
 
-```js
+```ts
 if (!machine.canTransitionTo(status, authoriser)) { /* reject */ }
 if (!authoriser.verifyOwnership(asset, userId))   { /* reject */ }
 ```
@@ -808,41 +941,55 @@ The Strategy and State patterns work together in a three-phase validation:
 
 All three must pass for the transition to be permitted.
 
-#### 8d. Photo storage strategy (`services/photo/storage/*.js`)
+#### 8d. Photo storage strategy (`services/photo/storage/*.ts`)
 
 A second, independent Strategy instance handles file storage for photos:
 
-```js
-// Strategy interface
-class StorageStrategy {
-  async save(directory, filename, buffer) { throw new Error('Not implemented'); }
-  async delete(relativePath)              { throw new Error('Not implemented'); }
-  getUrl(relativePath)                    { throw new Error('Not implemented'); }
+```ts
+abstract class StorageStrategy {
+  abstract save(directory: string, filename: string, buffer: Buffer): Promise<string>;
+  abstract delete(relativePath: string | null): Promise<void>;
+  abstract getUrl(relativePath: string): string;
 }
 ```
 
 | Class | `save()` | `delete()` | `getUrl()` |
 |-------|----------|------------|------------|
 | `LocalStorageStrategy` | Writes to `backend/uploads/<dir>/<file>` | Deletes from local filesystem | Returns URL path unchanged |
+| `S3StorageStrategy` | Uploads to Amazon S3 bucket | Deletes from S3 bucket | Returns S3 public URL |
 
 The `PhotoService` (Facade) holds a reference to a `StorageStrategy` instance
 and delegates all file I/O through it. The strategy is selected once at
-construction time based on environment config (currently always `LocalStorageStrategy`,
-but could be swapped for S3 or Cloudinary without changing any business logic).
+construction time based on the `PHOTO_STORAGE` environment variable — `'s3'`
+selects `S3StorageStrategy`, anything else falls back to `LocalStorageStrategy`:
+
+```ts
+constructor() {
+  const useS3 = process.env.PHOTO_STORAGE === 's3';
+  this.storageStrategy = useS3 ? new S3StorageStrategy() : new LocalStorageStrategy();
+}
+```
 
 The same `StorageStrategy` instance is also passed to the Composite's
 `delete(storageStrategy)` method. The `InventoryComponent._deleteOwnPhotos()`
 helper calls `storageStrategy.delete(url)` for each photo file — the Composite
 doesn't know or care which backend it's deleting from.
 
-In tests, a mock strategy can be substituted to avoid filesystem side-effects.
+`S3StorageStrategy` lazy-loads the `@aws-sdk/client-s3` package at construction
+time, so the AWS SDK is only required when `PHOTO_STORAGE=s3` is set. It handles
+key normalisation (stripping leading slashes, `uploads/` prefix) and URL
+encoding for S3 object keys.
+
+In tests, a mock strategy can be substituted to avoid filesystem or S3
+side-effects.
 
 ### Evaluation
 
 Confirmed. Two independent Strategy pattern instances coexist in the codebase:
 `TransitionAuthoriser` for state transitions and `StorageStrategy` for file
-storage. Both follow the textbook structure: a family of interchangeable
-algorithms behind a common interface, selected at runtime by the client.
+storage (with two concrete implementations: local filesystem and S3). Both
+follow the textbook structure: a family of interchangeable algorithms behind a
+common interface, selected at runtime by the client.
 
 ---
 
@@ -870,21 +1017,21 @@ ProductGroupComponent  →  AssetTypeComponent  →  AssetComponent
 
 All three entity wrappers implement the same interface:
 
-```js
-class InventoryComponent {
-  getId()                          // → string
-  getName()                        // → string
-  getChildren()                    // → InventoryComponent[] (empty for leaves)
-  getPhotoPaths()                  // → string[]
-  async delete(storageStrategy)    // deletes this entity and all descendants
+```ts
+abstract class InventoryComponent {
+  abstract getId(): string;
+  abstract getName(): string;
+  getChildren(): InventoryComponent[]      { return []; }  // leaf-safe default
+  getPhotoPaths(): string[]                { /* template method */ }
+  async delete(storageStrategy): Promise<void> { /* template method */ }
 }
 ```
 
 #### 9b. The leaf: `AssetComponent`
 
-```js
+```ts
 class AssetComponent extends InventoryComponent {
-  getChildren() { return []; }  // leaf: no children
+  getChildren(): InventoryComponent[] { return []; }  // leaf: no children
 
   async delete(storageStrategy) {
     if (storageStrategy) {
@@ -901,11 +1048,11 @@ class AssetComponent extends InventoryComponent {
 Both hold arrays of child `InventoryComponent` objects and delegate
 operations recursively:
 
-```js
+```ts
 class AssetTypeComponent extends InventoryComponent {
-  getChildren() { return this.children; }
+  getChildren(): InventoryComponent[] { return this.children; }
 
-  getPhotoPaths() {
+  getPhotoPaths(): string[] {
     const paths = [];
     if (this.doc.imageUrl)     paths.push(this.doc.imageUrl);
     if (this.doc.thumbnailUrl) paths.push(this.doc.thumbnailUrl);
@@ -928,7 +1075,7 @@ class AssetTypeComponent extends InventoryComponent {
 
 A stateless factory class assembles composite trees from MongoDB:
 
-```js
+```ts
 class InventoryTreeBuilder {
   static async fromGroupId(groupId)  → ProductGroupComponent  // full subtree
   static async fromTypeId(typeId)    → AssetTypeComponent      // full subtree
@@ -940,10 +1087,10 @@ class InventoryTreeBuilder {
 
 All three delete handlers follow the **same** pattern:
 
-```js
+```ts
 const root = await InventoryTreeBuilder.fromGroupId(req.params.id);
-if (!root) return res.status(404).json({ message: 'Group not found' });
-await root.delete(null);
+if (!root) throw new NotFoundError('Group not found');
+await root.delete((photoService as any).storageStrategy);
 res.json({ success: true });
 ```
 
@@ -975,49 +1122,53 @@ Confirmed. The implementation satisfies all four textbook requirements:
 
 ### How it appears in this codebase
 
-#### 10a. Entity photo handlers (`services/photo/handlers/*.js`)
+#### 10a. Entity photo handlers (`services/photo/handlers/*.ts`)
 
 The photo subsystem introduces a textbook Factory Method structure:
 
-```js
-// Creator (base class)
-class EntityPhotoHandler {
-  get model()          { throw new Error('Not implemented'); }
-  get subdirectory()   { throw new Error('Not implemented'); }
-  async findById(id)   { return this.model.findById(id); }
+```ts
+abstract class EntityPhotoHandler {
+  abstract get model(): Model<any>;
+  abstract get subdirectory(): string;
+  async findById(id)                      { return this.model.findById(id); }
   async updatePhoto(id, imageUrl, thumbnailUrl) { /* ... */ }
-  async getPhotoPaths(id) { /* ... */ }
+  async getPhotoPaths(id)                 { /* ... */ }
   async deleteEntityPhotoFiles(id, storageStrategy) { /* ... */ }
 }
 ```
 
 Three concrete subclasses override only the `model` and `subdirectory` getters:
 
-|| Subclass | `model` | `subdirectory` | File |
-||---|---------|---------------|------|
-|| `GroupPhotoHandler` | `ProductGroup` | `'groups'` | `handlers/GroupPhotoHandler.js` |
-|| `TypePhotoHandler` | `AssetType` | `'types'` | `handlers/TypePhotoHandler.js` |
-|| `AssetPhotoHandler` | `Asset` | `'assets'` | `handlers/AssetPhotoHandler.js` |
+| Subclass | `model` | `subdirectory` | File |
+|---|---------|---------------|------|
+| `GroupPhotoHandler` | `ProductGroup` | `'groups'` | `handlers/GroupPhotoHandler.ts` |
+| `TypePhotoHandler` | `AssetType` | `'types'` | `handlers/TypePhotoHandler.ts` |
+| `AssetPhotoHandler` | `Asset` | `'assets'` | `handlers/AssetPhotoHandler.ts` |
 
-The factory (`PhotoHandlerFactory`) creates the correct handler based on a type
-string:
+The factory (`PhotoHandlerFactory`) creates and caches the correct handler based
+on a type string:
 
-```js
+```ts
+const handlers: Record<string, EntityPhotoHandler> = {
+  group: new GroupPhotoHandler(),
+  type:  new TypePhotoHandler(),
+  asset: new AssetPhotoHandler(),
+};
+
 class PhotoHandlerFactory {
-  static create(entityType: 'group' | 'type' | 'asset') {
-    switch (entityType) {
-      case 'group': return new GroupPhotoHandler();
-      case 'type':  return new TypePhotoHandler();
-      case 'asset': return new AssetPhotoHandler();
-    }
+  static create(entityType: 'group' | 'type' | 'asset'): EntityPhotoHandler {
+    const handler = handlers[entityType];
+    if (!handler) throw new Error(`Unknown entity type: ${entityType}`);
+    return handler;
   }
 }
 ```
 
-Client code (the `PhotoService` facade) works through the base `EntityPhotoHandler`
-interface without knowing which concrete handler it received:
+Client code (the `PhotoService` facade) works through the base
+`EntityPhotoHandler` interface without knowing which concrete handler it
+received:
 
-```js
+```ts
 const handler = PhotoHandlerFactory.create(entityType);
 await handler.deleteEntityPhotoFiles(entityId, this.storageStrategy);
 await handler.updatePhoto(entityId, imageUrl, thumbnailUrl);
@@ -1051,9 +1202,9 @@ construction, and a Director defines the standard processing sequence.
 
 #### 11a. The Builder (`ProcessedPhotoBuilder`)
 
-```js
+```ts
 class ProcessedPhotoBuilder {
-  setOriginal(buffer, mimetype)   // stores raw upload data
+  setOriginal(buffer, mimetype)       // stores raw upload data
   async resize(maxWidth, maxHeight)   // resizes with sharp
   async generateThumbnail(size)       // creates square thumbnail
   async getResult()                   // returns { originalBuffer, thumbnailBuffer, width, height, mimetype }
@@ -1065,7 +1216,7 @@ through method calls and produces the final product via `getResult()`.
 
 #### 11b. The Director (`PhotoProcessingDirector`)
 
-```js
+```ts
 class PhotoProcessingDirector {
   async process(fileBuffer, mimetype) {
     const builder = new ProcessedPhotoBuilder();
@@ -1090,7 +1241,7 @@ encapsulated in the Builder.
 
 ### Product
 
-```js
+```ts
 {
   originalBuffer:  <Buffer>,    // resized original
   thumbnailBuffer: <Buffer>,    // thumbnail image
@@ -1111,6 +1262,171 @@ accumulated state.
 
 ---
 
+## 12. Observer
+
+**Category:** Behavioral
+
+**Refactoring.Guru definition:**
+> Observer is a behavioral design pattern that lets you define a subscription
+> mechanism to notify multiple objects about any events that happen to the
+> object they're observing.
+
+### How it appears in this codebase
+
+The Observer pattern is used to record completed rentals when assets transition
+out of the rental lifecycle. This decouples rental history recording from the
+status transition logic in the controller.
+
+#### 12a. The Observer interface (`RentalCompletionObserver`)
+
+```ts
+export interface RentalCompletionObserver {
+  onRentalCompleted(event: RentalCompletionEvent): Promise<void>;
+}
+```
+
+#### 12b. The Subject (`RentalCompletionSubject`)
+
+```ts
+export class RentalCompletionSubject {
+  private observers: RentalCompletionObserver[] = [];
+
+  subscribe(observer: RentalCompletionObserver): void {
+    this.observers.push(observer);
+  }
+
+  async notify(event: RentalCompletionEvent): Promise<void> {
+    await Promise.all(this.observers.map(obs => obs.onRentalCompleted(event)));
+  }
+}
+```
+
+The Subject maintains a list of observers and broadcasts events to all of them
+via `notify()`. The `Promise.all` ensures all observers are notified
+concurrently.
+
+#### 12c. The Concrete Observer (`MongoRentalHistoryRecorder`)
+
+```ts
+export class MongoRentalHistoryRecorder implements RentalCompletionObserver {
+  async onRentalCompleted(event: RentalCompletionEvent): Promise<void> {
+    await RentalHistory.create({
+      assetId: event.assetId,
+      typeId: event.typeId,
+      assetName: event.assetName,
+      assetTypeName: event.assetTypeName,
+      rentedByUserId: event.rentedByUserId,
+      returnDate: event.returnDate,
+      finalStatus: event.finalStatus,
+      completedAt: new Date().toISOString(),
+      ...(event.rentApprovedAt ? { rentApprovedAt: event.rentApprovedAt } : {}),
+      ...(event.rentDate ? { rentDate: event.rentDate } : {}),
+    });
+  }
+}
+```
+
+The concrete observer persists the rental completion event to MongoDB via the
+`RentalHistory` model. It knows nothing about the state machine, the
+controller, or how it was triggered — it only knows how to record a completed
+rental.
+
+#### 12d. The Event (`RentalCompletionEvent`)
+
+```ts
+export interface RentalCompletionEvent {
+  assetId: string;
+  typeId: string;
+  assetName: string;
+  assetTypeName: string;
+  rentedByUserId: string;
+  rentApprovedAt?: string;
+  rentDate?: string;
+  returnDate: string;
+  finalStatus: 'Available' | 'Maintenance';
+}
+```
+
+The event carries all the data needed to record a complete rental history entry:
+the asset identity, the type identity, the user who rented it, and the dates
+involved.
+
+#### 12e. Singleton subject with pre-subscribed observer
+
+```ts
+export const rentalCompletionSubject = new RentalCompletionSubject();
+rentalCompletionSubject.subscribe(new MongoRentalHistoryRecorder());
+```
+
+The subject is exported as a singleton (see [§1h](#1h-the-rental-completion-subject-servicesrental-historyrentalhistoryobserverts))
+with the MongoDB recorder already subscribed. The controller imports this one
+subject and calls `notify()` to broadcast events.
+
+#### 12f. Controller integration
+
+The `bulkUpdateStatus` handler in `assetController.ts` notifies the subject
+when a rental completes — specifically when transitioning from `Pending Return`
+to `Available` or `Maintenance` with `shouldClear` active:
+
+```ts
+if (shouldClear && (status === AVAILABLE || status === MAINTENANCE)) {
+  for (const asset of assets) {
+    if (asset.status === PENDING_RETURN && asset.rentedByUserId && asset.returnDate) {
+      const assetType = await AssetType.findById(asset.typeId);
+      if (assetType) {
+        await rentalCompletionSubject.notify({
+          assetId: asset._id.toString(),
+          typeId: asset.typeId.toString(),
+          assetName: asset.name,
+          assetTypeName: assetType.name,
+          rentedByUserId: asset.rentedByUserId,
+          returnDate: asset.returnDate,
+          finalStatus: status as 'Available' | 'Maintenance',
+        });
+      }
+    }
+  }
+}
+```
+
+The controller doesn't know *what* happens when a rental completes — it only
+knows that something should happen. The `MongoRentalHistoryRecorder` could be
+replaced or supplemented (e.g. with an email notification observer, an analytics
+observer, or a billing observer) without changing the controller at all.
+
+### Why Observer
+
+Without the Observer pattern, the controller would need to directly call
+`RentalHistory.create()` inline, coupling the status transition logic to the
+persistence mechanism. The Observer pattern provides:
+
+1. **Loose coupling** — the controller doesn't know about `RentalHistory` or
+   MongoDB.
+2. **Open/closed principle** — new observers can be added without modifying the
+   controller or existing observers.
+3. **Single responsibility** — each observer has one job (record history, send
+   notification, etc.).
+
+### Files
+
+| File | Role |
+|------|------|
+| `services/rental-history/RentalHistoryObserver.ts` | Observer interface, Subject, Concrete Observer, singleton instance |
+| `models/RentalHistory.ts` | Mongoose model for persisting rental history |
+| `controllers/assetController.ts` | Notifies the subject when rentals complete |
+
+### Evaluation
+
+Confirmed. The implementation satisfies all four textbook requirements:
+
+1. **Subject** (`RentalCompletionSubject`) with `subscribe()` and `notify()`.
+2. **Observer interface** (`RentalCompletionObserver`) with `onRentalCompleted()`.
+3. **Concrete Observer** (`MongoRentalHistoryRecorder`) that reacts to events.
+4. **Client** (the controller) notifies the subject without knowing who is
+   listening.
+
+---
+
 ## Cross-Pattern Relationships
 
 Several patterns coexist and interact within a single request flow:
@@ -1121,7 +1437,7 @@ The `ClerkAuthAdapter` simultaneously implements:
 
 - **Adapter** — translates Clerk's API into a stable interface.
 - **Facade** — simplifies the Clerk subsystem behind six methods.
-- **Singleton** — one shared instance via `module.exports = new ClerkAuthAdapter()`.
+- **Singleton** — one shared instance via `export default new ClerkAuthAdapter()`.
 
 ### State + Strategy — three-phase validation
 
@@ -1131,6 +1447,15 @@ In `bulkUpdateStatus`, the State and Strategy patterns work together:
 2. **Strategy** checks role-based authorisation (is this user's role permitted?).
 3. **Strategy** checks ownership (does this user own the asset?).
 
+### State + Observer — rental lifecycle
+
+When a state transition completes a rental (Pending Return → Available), the
+Observer pattern records the event:
+
+1. **State** validates the transition.
+2. **Strategy** authorises the user.
+3. **Observer** records the completed rental for history and reporting.
+
 ### Composite + Template Method
 
 The `delete()` method follows the same algorithm skeleton across all three
@@ -1139,17 +1464,18 @@ self) — a structural Template Method across the Composite hierarchy.
 
 ### Error Hierarchy + Chain of Responsibility
 
-The `AppError` class hierarchy (`services/errors/AppError.js`) extends the
+The `AppError` class hierarchy (`services/errors/AppError.ts`) extends the
 Chain of Responsibility by enriching the terminal error handler. Thrown
 `AppError` subclasses carry their own HTTP status code; the global error
-middleware in `server.js` inspects the error type and responds accordingly.
+middleware in `server.ts` inspects the error type and responds accordingly.
 This cleanly separates HTTP concerns (status codes) from business logic
 (thrown errors).
 
 ### All patterns coexist cleanly
 
 No pattern conflicts with another. Controllers use Adapter + Composite + State +
-Strategy in a single request flow without any pattern fighting for control.
+Strategy + Observer in a single request flow without any pattern fighting for
+control.
 
 ### PhotoService — multiple patterns in every operation
 
@@ -1161,7 +1487,7 @@ flowchart TD
     Facade -->|"create(entityType)"| Factory[PhotoHandlerFactory Factory Method]
     Facade -->|"process(buffer, mimetype)"| Director[PhotoProcessingDirector Director]
     Director -->|build| Builder[ProcessedPhotoBuilder Builder]
-    Facade -->|"save(dir, name, buf)"| Strategy[LocalStorageStrategy Strategy]
+    Facade -->|"save(dir, name, buf)"| Strategy[StorageStrategy]
     Factory -->|returns| Handler[EntityPhotoHandler]
     Handler -->|"updatePhoto(id, url)"| Model[Mongoose Model]
 ```
@@ -1170,7 +1496,8 @@ flowchart TD
 2. **Factory Method** — `PhotoHandlerFactory.create()` returns the right handler.
 3. **Builder** — `ProcessedPhotoBuilder` constructs the processed image step by
    step, orchestrated by `PhotoProcessingDirector` (Director).
-4. **Strategy** — `LocalStorageStrategy` handles file I/O; swappable for S3 etc.
+4. **Strategy** — `StorageStrategy` (local or S3) handles file I/O; swappable
+   at construction time.
 5. **Singleton** — `PhotoService` is a singleton; all modules share one storage
    strategy instance.
 
@@ -1186,25 +1513,40 @@ deletion to the `StorageStrategy`. The Composite doesn't know about
 filesystem paths, S3 buckets, or Cloudinary URLs — it calls
 `storageStrategy.delete(url)` and the strategy handles the rest.
 
+### Pricing — Decorator chain in action
+
+The `calculateRentalCost` handler builds a pricing chain per asset type:
+
+```mermaid
+flowchart LR
+    Base[BasePricing] -->|wrapped by| Weekly[WeeklyDiscountDecorator]
+    Weekly -->|wrapped by| Long[LongTermDiscountDecorator]
+```
+
+Each decorator wraps the previous one and conditionally modifies the price.
+The controller calls `chain.calculate(days)` and receives the final price
+after all discounts have been applied.
+
 ---
 
 ## Verification
 
 | Pattern | Evidence |
 |---------|----------|
-| State | 30 dedicated unit tests (`test/state-pattern.test.js`). 1 integration test verifying state-machine-driven rental data clearing (`test/assets.test.js`). |
-| Strategy | Virtual transition authoriser tests in `test/state-pattern.test.js`. LocalStorageStrategy verified by photo integration tests (`test/photo.test.js`). MockStrategy available for service-level testing. |
-| Adapter | 20 dedicated unit tests (`test/adapter.test.js`). Correctly handles Clerk v1 and v2 request shapes, normalises user objects, and degrades gracefully on API failures. |
-| Composite | 14 dedicated integration tests (`test/composite.test.js`). Template Method refactor eliminated ~50 lines of duplicated code; all 14 tests pass unchanged. Cascading photo deletion verified by integration tests. |
-| Singleton | Verified by Node.js module caching — `require()` returns the same object. PhotoService follows the same pattern as ClerkAuthAdapter. |
-| Facade | `server.js` (infrastructure), `enrichWithClerkUsers` (user data), `PhotoService` (photo operations), and `EntityService` (entity data mutations) — four independent facades. Verified by integration tests. |
-| Decorator | Middleware stack verified by route-level integration tests. |
+| State | 30 dedicated unit tests (`test/state-pattern.test.ts`). 1 integration test verifying state-machine-driven rental data clearing (`test/assets.test.ts`). |
+| Strategy | Transition authoriser tests in `test/state-pattern.test.ts`. `LocalStorageStrategy` verified by photo integration tests (`test/photo.test.js`). `S3StorageStrategy` has its own logic for key normalisation and URL handling. MockStrategy available for service-level testing. |
+| Adapter | 20 dedicated unit tests (`test/adapter.test.ts`). Correctly handles Clerk v1 and v2 request shapes, normalises user objects, and degrades gracefully on API failures. |
+| Composite | 14 dedicated integration tests (`test/composite.test.ts`). Template Method refactor eliminated ~50 lines of duplicated code; all 14 tests pass unchanged. Cascading photo deletion verified by integration tests. |
+| Singleton | Verified by Node.js module caching — imports return the same object. PhotoService, EntityService, ClerkAuthAdapter, and rentalCompletionSubject all follow the same pattern. |
+| Facade | `server.ts` (infrastructure), `enrichWithClerkUsers` (user data), `PhotoService` (photo operations), and `EntityService` (entity data mutations) — four independent facades. Verified by integration tests. |
+| Decorator | Middleware stack verified by route-level integration tests. Pricing decorator chain verified by cost calculation tests in `test/assets.test.ts` — tests confirm discount application at 7-day and 30-day thresholds. |
 | Chain of Responsibility | Middleware chain verified by auth integration tests (401/403 responses). Upload validation chain (multer + validateFileType) verified by photo tests (400 for invalid file types). |
 | Template Method | Verified by State pattern unit tests and Composite integration tests. |
 | Factory Method | PhotoHandlerFactory.create() returns the correct handler subclass for each entity type. Verified by integration tests via PhotoService. |
 | Builder | ProcessedPhotoBuilder and PhotoProcessingDirector verified by photo integration tests (correct resize + thumbnail dimensions). |
-| EntityService | `EntityService.updateEntity()` verified by the same 12 PATCH integration tests in `test/photo.test.js`. Uses a plain model map instead of the handler hierarchy. |
-| Controller | `photoController.js` exports `uploadPhoto` and `deletePhoto` as higher-order functions. `entityController.js` exports `updateEntity` following the same factory pattern. 12 dedicated integration tests cover all PATCH scenarios (200, 400, 404, 401, 403 for groups, types, and assets). |
+| Observer | Rental history recording verified by integration tests in `test/assets.test.ts` — tests confirm that completing a rental (Pending Return → Available) creates a RentalHistory document with the correct fields. |
+| EntityService | `EntityService.updateEntity()` verified by the same 12 PATCH integration tests in `test/photo.test.ts`. Uses a plain model map instead of the handler hierarchy. |
+| Controller | `photoController.ts` exports `uploadPhoto` and `deletePhoto` as higher-order functions. `entityController.ts` exports `updateEntity` following the same factory pattern. 12 dedicated integration tests cover all PATCH scenarios (200, 400, 404, 401, 403 for groups, types, and assets). `assetController.ts` exports handlers for rental requests, extensions, cost calculation, reporting, batch creation, seed reset, and rental history. |
 
 ---
 
@@ -1212,11 +1554,11 @@ filesystem paths, S3 buckets, or Cloudinary URLs — it calls
 
 Route handlers contain no explicit try/catch blocks. Express 5 automatically
 catches rejected promises from `async` handlers and forwards them to
-`next(err)`. A single error-handling middleware in `server.js` (the Express
+`next(err)`. A single error-handling middleware in `server.ts` (the Express
 standard four-parameter form: `(err, req, res, next)`) responds with a
 consistent `{ message: string }` shape.
 
-The custom `AppError` class hierarchy (`services/errors/AppError.js`) extends
+The custom `AppError` class hierarchy (`services/errors/AppError.ts`) extends
 this by giving each error type its own HTTP status code. Controllers throw
 typed errors (`throw new NotFoundError('Asset not found')`) instead of calling
 `res.status(404).json(...)`, keeping HTTP concerns in one place — the global

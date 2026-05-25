@@ -1,0 +1,4139 @@
+{
+	"info": {
+		"_postman_id": "rental-manager-api-tests",
+		"name": "Rental Manager API Tests",
+		"description": "Self-contained API tests organized by endpoint. Each test creates its own prerequisites via pre-request scripts. Run with `npm run test:api` or import into Postman GUI.\n\nEnvironment variables required: `base_url`, `admin_token`, `customer_token`, `TEST_IMAGE_UPLOAD_PATH`.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{admin_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5001",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Auth",
+			"description": "Profile endpoints. All authenticated users can access these.",
+			"item": [
+				{
+					"name": "GET profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200 or 404', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Address updated', function () {",
+									"    pm.expect(pm.response.json().address).to.eql('123 Test St');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"address\": \"123 Test St\",\n  \"phone\": \"0400123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Groups",
+			"description": "Product group CRUD. Write operations require admin.",
+			"item": [
+				{
+					"name": "POST /",
+					"item": [
+						{
+							"name": "201 - Create group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"pm.test('Response has id', function () {",
+											"    var json = pm.response.json();",
+											"    pm.expect(json.id).to.be.a('string');",
+											"    pm.expect(json.name).to.eql('Test Group');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test Group\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"pm.test('Error message present', function () {",
+											"    pm.expect(pm.response.json().message).to.be.a('string');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Blank name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"   \"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot create",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});",
+													"pm.test('Error message present', function () {",
+													"    pm.expect(pm.response.json().message).to.be.a('string');",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"Should Not Create\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/groups",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"groups"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "GET /",
+					"item": [
+						{
+							"name": "200 - List groups",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Returns an array', function () {",
+											"    pm.expect(pm.response.json()).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth Required",
+							"auth": {
+								"type": "noauth"
+							},
+							"item": [
+								{
+									"name": "Rejected - No token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Unauthenticated request is rejected', function () {",
+													"    pm.expect(pm.response.code).to.not.equal(200);",
+													"});",
+													"pm.test('Response is not valid group data', function () {",
+													"    try {",
+													"        var json = pm.response.json();",
+													"        pm.expect(Array.isArray(json)).to.be.false;",
+													"    } catch (e) {",
+													"        pm.expect(e).to.be.ok;",
+													"    }",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/groups",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"groups"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "PATCH /:id",
+					"item": [
+						{
+							"name": "200 - Update group",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.sendRequest({",
+											"    url: pm.variables.get('base_url') + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pm.environment.get('admin_token') },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Pre-req Group' }) }",
+											"}, function (err, res) {",
+											"    pm.variables.set('groupId', res.json().id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Name updated', function () {",
+											"    pm.expect(pm.response.json().name).to.eql('Updated Group');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Updated Group\",\n  \"description\": \"Updated by test\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups/{{groupId}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups",
+										"{{groupId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot update",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.sendRequest({",
+													"    url: pm.variables.get('base_url') + '/api/groups',",
+													"    method: 'POST',",
+													"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pm.environment.get('admin_token') },",
+													"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Pre-req Group' }) }",
+													"}, function (err, res) {",
+													"    pm.variables.set('groupId', res.json().id);",
+													"});"
+												]
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"Should Not Update\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/groups/{{groupId}}",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"groups",
+												"{{groupId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "DELETE /:id",
+					"item": [
+						{
+							"name": "200 - Delete group",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.sendRequest({",
+											"    url: pm.variables.get('base_url') + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pm.environment.get('admin_token') },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'To Delete' }) }",
+											"}, function (err, res) {",
+											"    pm.variables.set('groupId', res.json().id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Response has success', function () {",
+											"    pm.expect(pm.response.json().success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/{{groupId}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups",
+										"{{groupId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "404 - Non-existent group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/000000000000000000000000",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups",
+										"000000000000000000000000"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth Required",
+							"auth": {
+								"type": "noauth"
+							},
+							"item": [
+								{
+									"name": "Rejected - No token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Unauthenticated request is rejected', function () {",
+													"    pm.expect(pm.response.code).to.not.equal(200);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/groups/000000000000000000000000",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"groups",
+												"000000000000000000000000"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot delete",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.sendRequest({",
+													"    url: pm.variables.get('base_url') + '/api/groups',",
+													"    method: 'POST',",
+													"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pm.environment.get('admin_token') },",
+													"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Protected Group' }) }",
+													"}, function (err, res) {",
+													"    pm.variables.set('groupId', res.json().id);",
+													"});"
+												]
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/groups/{{groupId}}",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"groups",
+												"{{groupId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "POST /:id/photo",
+					"item": [
+						{
+							"name": "200 - Upload group photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.sendRequest({",
+											"    url: pm.variables.get('base_url') + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pm.environment.get('admin_token') },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Photo Test Group' }) }",
+											"}, function (err, res) {",
+											"    pm.variables.set('groupId', res.json().id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "photo",
+											"type": "file",
+											"src": ""
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups/{{groupId}}/photo",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups",
+										"{{groupId}}",
+										"photo"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DELETE /:id/photo",
+					"item": [
+						{
+							"name": "200 - Delete group photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Photo Del Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/groups/' + gid + '/photo',",
+											"        method: 'POST',",
+											"        header: { 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'formdata', formdata: [{ key: 'photo', type: 'file', src: pm.environment.get('TEST_IMAGE_UPLOAD_PATH') || '' }] }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('groupId', gid);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Response has success', function () {",
+											"    pm.expect(pm.response.json().success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/{{groupId}}/photo",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"groups",
+										"{{groupId}}",
+										"photo"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3. Types",
+			"description": "Asset type CRUD. Write operations require admin. Types belong to a group.",
+			"item": [
+				{
+					"name": "POST /",
+					"item": [
+						{
+							"name": "201 - Create type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.sendRequest({",
+											"    url: pm.variables.get('base_url') + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pm.environment.get('admin_token') },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Type Test Group' }) }",
+											"}, function (err, res) {",
+											"    pm.variables.set('groupId', res.json().id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"pm.test('Response has id', function () {",
+											"    var json = pm.response.json();",
+											"    pm.expect(json.id).to.be.a('string');",
+											"    pm.expect(json.name).to.eql('Test Type');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"groupId\": \"{{groupId}}\",\n  \"name\": \"Test Type\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing groupId",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test Type\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"groupId\": \"000000000000000000000000\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot create",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"groupId\": \"000000000000000000000000\",\n  \"name\": \"Should Not Create\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/types",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"types"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "GET /",
+					"item": [
+						{
+							"name": "200 - List types",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Returns an array', function () {",
+											"    pm.expect(pm.response.json()).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth Required",
+							"auth": {
+								"type": "noauth"
+							},
+							"item": [
+								{
+									"name": "Rejected - No token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Unauthenticated request is rejected', function () {",
+													"    pm.expect(pm.response.code).to.not.equal(200);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/types",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"types"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "PATCH /:id",
+					"item": [
+						{
+							"name": "200 - Update type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Type Patch Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Pre-req Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Name updated', function () {",
+											"    pm.expect(pm.response.json().name).to.eql('Updated Type');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Updated Type\",\n  \"description\": \"Updated by test\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types/{{typeId}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types",
+										"{{typeId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot update",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"var baseUrl = pm.variables.get('base_url');",
+													"var token = pm.environment.get('admin_token');",
+													"pm.sendRequest({",
+													"    url: baseUrl + '/api/groups',",
+													"    method: 'POST',",
+													"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Type Patch 403 Group' }) }",
+													"}, function (err, res) {",
+													"    var gid = res.json().id;",
+													"    pm.sendRequest({",
+													"        url: baseUrl + '/api/types',",
+													"        method: 'POST',",
+													"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Protected Type' }) }",
+													"    }, function (err2, res2) {",
+													"        pm.variables.set('typeId', res2.json().id);",
+													"    });",
+													"});"
+												]
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"Should Not Update\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/types/{{typeId}}",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"types",
+												"{{typeId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "DELETE /:id",
+					"item": [
+						{
+							"name": "200 - Delete type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Type Del Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'To Delete Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Response has success', function () {",
+											"    pm.expect(pm.response.json().success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/types/{{typeId}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types",
+										"{{typeId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "404 - Non-existent type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/types/000000000000000000000000",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types",
+										"000000000000000000000000"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot delete",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/types/000000000000000000000000",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"types",
+												"000000000000000000000000"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "POST /:id/photo",
+					"item": [
+						{
+							"name": "200 - Upload type photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Type Photo Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Photo Test Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "photo",
+											"type": "file",
+											"src": ""
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types/{{typeId}}/photo",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types",
+										"{{typeId}}",
+										"photo"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DELETE /:id/photo",
+					"item": [
+						{
+							"name": "200 - Delete type photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Type Photo Del Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Photo Del Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/types/' + tid + '/photo',",
+											"            method: 'POST',",
+											"            header: { 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'formdata', formdata: [{ key: 'photo', type: 'file', src: pm.environment.get('TEST_IMAGE_UPLOAD_PATH') || '' }] }",
+											"        }, function (err3, res3) {",
+											"            pm.variables.set('typeId', tid);",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Response has success', function () {",
+											"    pm.expect(pm.response.json().success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/types/{{typeId}}/photo",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"types",
+										"{{typeId}}",
+										"photo"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4. Assets",
+			"description": "Asset CRUD, filtering, and batch operations.",
+			"item": [
+				{
+					"name": "POST /",
+					"item": [
+						{
+							"name": "201 - Create asset",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Asset Test Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Asset Test Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"pm.test('Asset is Available', function () {",
+											"    pm.expect(pm.response.json().status).to.eql('Available');",
+											"});",
+											"pm.test('Response has id', function () {",
+											"    pm.expect(pm.response.json().id).to.be.a('string');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{typeId}}\",\n  \"name\": \"Test Asset\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing typeId",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test Asset\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing name",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'NoName Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'NoName Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{typeId}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot create",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"typeId\": \"000000000000000000000000\",\n  \"name\": \"Should Not Create\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/assets",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"assets"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "POST /batch",
+					"item": [
+						{
+							"name": "201 - Batch create assets",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Batch Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Batch Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"pm.test('Created 3 assets', function () {",
+											"    var json = pm.response.json();",
+											"    pm.expect(json.length).to.eql(3);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{typeId}}\",\n  \"names\": [\"Batch 1\", \"Batch 2\", \"Batch 3\"]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/batch",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"batch"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Empty names array",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Batch Empty Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Batch Empty Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{typeId}}\",\n  \"names\": []\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/batch",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"batch"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "GET /",
+					"item": [
+						{
+							"name": "200 - List assets",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Returns an array', function () {",
+											"    pm.expect(pm.response.json()).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "200 - Filter by name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Results contain search term', function () {",
+											"    var json = pm.response.json();",
+											"    if (json.length > 0) {",
+											"        json.forEach(function (a) {",
+											"            pm.expect(a.name.toLowerCase()).to.include('camera');",
+											"        });",
+											"    }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets?name=camera",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets"
+									],
+									"query": [
+										{
+											"key": "name",
+											"value": "camera"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "200 - Filter by status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('All results are Available', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.status).to.eql('Available');",
+											"    });",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets?status=Available",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets"
+									],
+									"query": [
+										{
+											"key": "status",
+											"value": "Available"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth Required",
+							"auth": {
+								"type": "noauth"
+							},
+							"item": [
+								{
+									"name": "Rejected - No token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Unauthenticated request is rejected', function () {",
+													"    pm.expect(pm.response.code).to.not.equal(200);",
+													"});",
+													"pm.test('Response is not valid asset data', function () {",
+													"    try {",
+													"        var json = pm.response.json();",
+													"        pm.expect(Array.isArray(json)).to.be.false;",
+													"    } catch (e) {",
+													"        pm.expect(e).to.be.ok;",
+													"    }",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/assets",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"assets"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "PATCH /:id",
+					"item": [
+						{
+							"name": "200 - Update asset",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Patch Asset Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Patch Asset Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'To Patch' }) }",
+											"        }, function (err3, res3) {",
+											"            pm.variables.set('assetId', res3.json().id);",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Name updated', function () {",
+											"    pm.expect(pm.response.json().name).to.eql('Updated Asset');",
+											"});",
+											"pm.test('Description updated', function () {",
+											"    pm.expect(pm.response.json().description).to.eql('Updated by test');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Updated Asset\",\n  \"description\": \"Updated by test\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/{{assetId}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"{{assetId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DELETE /:id",
+					"item": [
+						{
+							"name": "200 - Delete asset",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Del Asset Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Del Asset Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'To Delete' }) }",
+											"        }, function (err3, res3) {",
+											"            pm.variables.set('assetId', res3.json().id);",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Response has success', function () {",
+											"    pm.expect(pm.response.json().success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/{{assetId}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"{{assetId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "404 - Non-existent asset",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/000000000000000000000000",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"000000000000000000000000"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot delete",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"var baseUrl = pm.variables.get('base_url');",
+													"var token = pm.environment.get('admin_token');",
+													"pm.sendRequest({",
+													"    url: baseUrl + '/api/groups',",
+													"    method: 'POST',",
+													"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"    body: { mode: 'raw', raw: JSON.stringify({ name: 'CustDel Asset Group' }) }",
+													"}, function (err, res) {",
+													"    var gid = res.json().id;",
+													"    pm.sendRequest({",
+													"        url: baseUrl + '/api/types',",
+													"        method: 'POST',",
+													"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'CustDel Asset Type' }) }",
+													"    }, function (err2, res2) {",
+													"        var tid = res2.json().id;",
+													"        pm.sendRequest({",
+													"            url: baseUrl + '/api/assets',",
+													"            method: 'POST',",
+													"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Protected Asset' }) }",
+													"        }, function (err3, res3) {",
+													"            pm.variables.set('assetId', res3.json().id);",
+													"        });",
+													"    });",
+													"});"
+												]
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/assets/{{assetId}}",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"assets",
+												"{{assetId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "POST /:id/photo",
+					"item": [
+						{
+							"name": "200 - Upload asset photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Photo Asset Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Photo Asset Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Photo Test Asset' }) }",
+											"        }, function (err3, res3) {",
+											"            pm.variables.set('assetId', res3.json().id);",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "photo",
+											"type": "file",
+											"src": ""
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/{{assetId}}/photo",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"{{assetId}}",
+										"photo"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DELETE /:id/photo",
+					"item": [
+						{
+							"name": "200 - Delete asset photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'PhotoDel Asset Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'PhotoDel Asset Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'PhotoDel Test Asset' }) }",
+											"        }, function (err3, res3) {",
+											"            var aid = res3.json().id;",
+											"            pm.sendRequest({",
+											"                url: baseUrl + '/api/assets/' + aid + '/photo',",
+											"                method: 'POST',",
+											"                header: { 'Authorization': 'Bearer ' + token },",
+											"                body: { mode: 'formdata', formdata: [{ key: 'photo', type: 'file', src: pm.environment.get('TEST_IMAGE_UPLOAD_PATH') || '' }] }",
+											"            }, function (err4, res4) {",
+											"                pm.variables.set('assetId', aid);",
+											"            });",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Response has success', function () {",
+											"    pm.expect(pm.response.json().success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/{{assetId}}/photo",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"{{assetId}}",
+										"photo"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "5. Rental Operations",
+			"description": "Rental workflow: calculate cost, request rental, status transitions, extensions, reports.",
+			"item": [
+				{
+					"name": "POST /calculate-cost",
+					"item": [
+						{
+							"name": "200 - Calculate rental cost",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Cost Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Cost Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Has grandTotal', function () {",
+											"    pm.expect(pm.response.json().grandTotal).to.be.a('number');",
+											"});",
+											"pm.test('Has items', function () {",
+											"    pm.expect(pm.response.json().items).to.be.an('array');",
+											"});",
+											"pm.test('Has days', function () {",
+											"    pm.expect(pm.response.json().days).to.be.a('number');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"items\": [{ \"typeId\": \"{{typeId}}\", \"quantity\": 2 }],\n  \"returnDate\": \"2026-06-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/calculate-cost",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"calculate-cost"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "POST /request-rental",
+					"item": [
+						{
+							"name": "200 - Request rental",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Rental Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Rental Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Rental Asset 1' }) }",
+											"        }, function (err3, res3) {",
+											"            pm.sendRequest({",
+											"                url: baseUrl + '/api/assets',",
+											"                method: 'POST',",
+											"                header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Rental Asset 2' }) }",
+											"            }, function (err4, res4) {",
+											"                pm.variables.set('typeId', tid);",
+											"            });",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Assets are Pending Rental', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.status).to.eql('Pending Rental');",
+											"    });",
+											"});",
+											"pm.test('Assets have rentedByUserId', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.rentedByUserId).to.be.a('string');",
+											"    });",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"items\": [{ \"typeId\": \"{{typeId}}\", \"quantity\": 2 }],\n  \"returnDate\": \"2026-06-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-rental",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"request-rental"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing items",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"returnDate\": \"2026-06-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-rental",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"request-rental"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing returnDate",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"items\": [{ \"typeId\": \"000000000000000000000000\", \"quantity\": 1 }]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-rental",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"request-rental"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "409 - Insufficient stock",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Stock Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Stock Type' }) }",
+											"    }, function (err2, res2) {",
+											"        pm.variables.set('typeId', res2.json().id);",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 409', function () {",
+											"    pm.response.to.have.status(409);",
+											"});",
+											"pm.test('Error mentions availability', function () {",
+											"    pm.expect(pm.response.json().message.toLowerCase()).to.include('available');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"items\": [{ \"typeId\": \"{{typeId}}\", \"quantity\": 999 }],\n  \"returnDate\": \"2026-06-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-rental",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"request-rental"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "PATCH /bulk-status",
+					"item": [
+						{
+							"name": "200 - Approve rental (Pending Rental → Rented)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Bulk Approve Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Bulk Approve Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Bulk Approve Asset 1' }) }",
+											"        }, function (err2a, res2a) {",
+											"            pm.sendRequest({",
+											"                url: baseUrl + '/api/assets',",
+											"                method: 'POST',",
+											"                header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Bulk Approve Asset 2' }) }",
+											"            }, function (err2b, res2b) {",
+											"                pm.sendRequest({",
+											"                    url: baseUrl + '/api/assets/request-rental',",
+											"                    method: 'POST',",
+											"                    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                    body: { mode: 'raw', raw: JSON.stringify({ items: [{ typeId: tid, quantity: 2 }], returnDate: '2026-06-01' }) }",
+											"                }, function (err3, res3) {",
+											"                    var assets = res3.json();",
+											"                    pm.variables.set('assetId1', assets[0].id);",
+											"                    pm.variables.set('assetId2', assets[1].id);",
+											"                });",
+											"            });",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Assets are Rented', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.status).to.eql('Rented');",
+											"    });",
+											"});",
+											"pm.test('Assets have rentedAt', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.rentedAt).to.be.a('string');",
+											"    });",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{assetId1}}\", \"{{assetId2}}\"],\n  \"status\": \"Rented\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/bulk-status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"bulk-status"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "200 - Request return (Rented → Pending Return)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Return Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Return Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Return Asset 1' }) }",
+											"        }, function (err2a, res2a) {",
+											"            pm.sendRequest({",
+											"                url: baseUrl + '/api/assets',",
+											"                method: 'POST',",
+											"                header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Return Asset 2' }) }",
+											"            }, function (err2b, res2b) {",
+											"                pm.sendRequest({",
+											"                    url: baseUrl + '/api/assets/request-rental',",
+											"                    method: 'POST',",
+											"                    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                    body: { mode: 'raw', raw: JSON.stringify({ items: [{ typeId: tid, quantity: 2 }], returnDate: '2026-06-01' }) }",
+											"                }, function (err3, res3) {",
+											"                    var assets = res3.json();",
+											"                    var ids = assets.map(function(a){ return a.id; });",
+											"                    pm.sendRequest({",
+											"                        url: baseUrl + '/api/assets/bulk-status',",
+											"                        method: 'PATCH',",
+											"                        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                        body: { mode: 'raw', raw: JSON.stringify({ ids: ids, status: 'Rented' }) }",
+											"                    }, function (err4, res4) {",
+											"                        pm.variables.set('assetId1', ids[0]);",
+											"                        pm.variables.set('assetId2', ids[1]);",
+											"                    });",
+											"                });",
+											"            });",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Assets are Pending Return', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.status).to.eql('Pending Return');",
+											"    });",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{assetId1}}\", \"{{assetId2}}\"],\n  \"status\": \"Pending Return\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/bulk-status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"bulk-status"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "200 - Complete return (Pending Return → Available)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Complete Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Complete Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Complete Asset 1' }) }",
+											"        }, function (err2a, res2a) {",
+											"            pm.sendRequest({",
+											"                url: baseUrl + '/api/assets',",
+											"                method: 'POST',",
+											"                header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Complete Asset 2' }) }",
+											"            }, function (err2b, res2b) {",
+											"                pm.sendRequest({",
+											"                    url: baseUrl + '/api/assets/request-rental',",
+											"                    method: 'POST',",
+											"                    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                    body: { mode: 'raw', raw: JSON.stringify({ items: [{ typeId: tid, quantity: 2 }], returnDate: '2026-06-01' }) }",
+											"                }, function (err3, res3) {",
+											"                    var ids = res3.json().map(function(a){ return a.id; });",
+											"                    pm.sendRequest({",
+											"                        url: baseUrl + '/api/assets/bulk-status',",
+											"                        method: 'PATCH',",
+											"                        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                        body: { mode: 'raw', raw: JSON.stringify({ ids: ids, status: 'Rented' }) }",
+											"                    }, function (err4, res4) {",
+											"                        pm.sendRequest({",
+											"                            url: baseUrl + '/api/assets/bulk-status',",
+											"                            method: 'PATCH',",
+											"                            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                            body: { mode: 'raw', raw: JSON.stringify({ ids: ids, status: 'Pending Return' }) }",
+											"                        }, function (err5, res5) {",
+											"                            pm.variables.set('assetId1', ids[0]);",
+											"                            pm.variables.set('assetId2', ids[1]);",
+											"                        });",
+											"                    });",
+											"                });",
+											"            });",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Assets are Available', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.status).to.eql('Available');",
+											"    });",
+											"});",
+											"pm.test('Rental data cleared', function () {",
+											"    pm.response.json().forEach(function (a) {",
+											"        pm.expect(a.rentedByUserId == null).to.be.true;",
+											"        pm.expect(a.returnDate == null).to.be.true;",
+											"    });",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{assetId1}}\", \"{{assetId2}}\"],\n  \"status\": \"Available\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/bulk-status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"bulk-status"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "200 - Send to Maintenance (Available → Maintenance)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Maint Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Maint Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Maint Asset' }) }",
+											"        }, function (err3, res3) {",
+											"            pm.variables.set('assetId1', res3.json().id);",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Asset is Maintenance', function () {",
+											"    pm.expect(pm.response.json()[0].status).to.eql('Maintenance');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{assetId1}}\"],\n  \"status\": \"Maintenance\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/bulk-status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"bulk-status"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Missing ids",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"Available\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/bulk-status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"bulk-status"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot set Maintenance",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"var baseUrl = pm.variables.get('base_url');",
+													"var token = pm.environment.get('admin_token');",
+													"pm.sendRequest({",
+													"    url: baseUrl + '/api/groups',",
+													"    method: 'POST',",
+													"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"    body: { mode: 'raw', raw: JSON.stringify({ name: 'CustMaint Group' }) }",
+													"}, function (err, res) {",
+													"    var gid = res.json().id;",
+													"    pm.sendRequest({",
+													"        url: baseUrl + '/api/types',",
+													"        method: 'POST',",
+													"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'CustMaint Type' }) }",
+													"    }, function (err2, res2) {",
+													"        var tid = res2.json().id;",
+													"        pm.sendRequest({",
+													"            url: baseUrl + '/api/assets',",
+													"            method: 'POST',",
+													"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'CustMaint Asset' }) }",
+													"        }, function (err3, res3) {",
+													"            pm.variables.set('assetId1', res3.json().id);",
+													"        });",
+													"    });",
+													"});"
+												]
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"ids\": [\"{{assetId1}}\"],\n  \"status\": \"Maintenance\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/assets/bulk-status",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"assets",
+												"bulk-status"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "POST /request-extension",
+					"item": [
+						{
+							"name": "200 - Request extension",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Ext Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Ext Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Ext Asset' }) }",
+											"        }, function (err3, res3) {",
+											"            var aid = res3.json().id;",
+											"            pm.sendRequest({",
+											"                url: baseUrl + '/api/assets/request-rental',",
+											"                method: 'POST',",
+											"                header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                body: { mode: 'raw', raw: JSON.stringify({ items: [{ typeId: tid, quantity: 1 }], returnDate: '2026-06-01' }) }",
+											"            }, function (err4, res4) {",
+											"                var rid = res4.json()[0].id;",
+											"                pm.sendRequest({",
+											"                    url: baseUrl + '/api/assets/bulk-status',",
+											"                    method: 'PATCH',",
+											"                    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                    body: { mode: 'raw', raw: JSON.stringify({ ids: [rid], status: 'Rented' }) }",
+											"                }, function (err5, res5) {",
+											"                    pm.variables.set('assetId1', rid);",
+											"                });",
+											"            });",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Extension date set', function () {",
+											"    pm.expect(pm.response.json().extensionRequestedReturnDate).to.eql('2026-06-15');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"assetId\": \"{{assetId1}}\",\n  \"newReturnDate\": \"2026-06-15\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-extension",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"request-extension"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Date not later than current",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'Ext Bad Date Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'Ext Bad Date Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'Ext Bad Date Asset' }) }",
+											"        }, function (err3, res3) {",
+											"            pm.variables.set('assetId1', res3.json().id);",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"assetId\": \"{{assetId1}}\",\n  \"newReturnDate\": \"2020-01-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-extension",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"request-extension"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "PATCH /extension-request",
+					"item": [
+						{
+							"name": "200 - Approve extension",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'ExtApp Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'ExtApp Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'ExtApp Asset' }) }",
+											"        }, function (err3, res3) {",
+											"            var aid = res3.json().id;",
+											"            pm.sendRequest({",
+											"                url: baseUrl + '/api/assets/request-rental',",
+											"                method: 'POST',",
+											"                header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                body: { mode: 'raw', raw: JSON.stringify({ items: [{ typeId: tid, quantity: 1 }], returnDate: '2026-06-01' }) }",
+											"            }, function (err4, res4) {",
+											"                var rid = res4.json()[0].id;",
+											"                pm.sendRequest({",
+											"                    url: baseUrl + '/api/assets/bulk-status',",
+											"                    method: 'PATCH',",
+											"                    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                    body: { mode: 'raw', raw: JSON.stringify({ ids: [rid], status: 'Rented' }) }",
+											"                }, function (err5, res5) {",
+											"                    pm.sendRequest({",
+											"                        url: baseUrl + '/api/assets/request-extension',",
+											"                        method: 'POST',",
+											"                        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"                        body: { mode: 'raw', raw: JSON.stringify({ assetId: rid, newReturnDate: '2026-06-15' }) }",
+											"                    }, function (err6, res6) {",
+											"                        pm.variables.set('assetId1', rid);",
+											"                    });",
+											"                });",
+											"            });",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Return date updated', function () {",
+											"    pm.expect(pm.response.json()[0].returnDate).to.eql('2026-06-15');",
+											"});",
+											"pm.test('Extension request cleared', function () {",
+											"    pm.expect(pm.response.json()[0].extensionRequestedReturnDate == null).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{assetId1}}\"],\n  \"decision\": \"approve\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/extension-request",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"extension-request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - No pending extension",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var baseUrl = pm.variables.get('base_url');",
+											"var token = pm.environment.get('admin_token');",
+											"pm.sendRequest({",
+											"    url: baseUrl + '/api/groups',",
+											"    method: 'POST',",
+											"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"    body: { mode: 'raw', raw: JSON.stringify({ name: 'NoExt Group' }) }",
+											"}, function (err, res) {",
+											"    var gid = res.json().id;",
+											"    pm.sendRequest({",
+											"        url: baseUrl + '/api/types',",
+											"        method: 'POST',",
+											"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'NoExt Type' }) }",
+											"    }, function (err2, res2) {",
+											"        var tid = res2.json().id;",
+											"        pm.sendRequest({",
+											"            url: baseUrl + '/api/assets',",
+											"            method: 'POST',",
+											"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+											"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'NoExt Asset' }) }",
+											"        }, function (err3, res3) {",
+											"            pm.variables.set('assetId1', res3.json().id);",
+											"        });",
+											"    });",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{assetId1}}\"],\n  \"decision\": \"approve\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/extension-request",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"extension-request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer",
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{customer_token}}",
+										"type": "string"
+									}
+								]
+							},
+							"item": [
+								{
+									"name": "403 - Customer cannot resolve",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"var baseUrl = pm.variables.get('base_url');",
+													"var token = pm.environment.get('admin_token');",
+													"pm.sendRequest({",
+													"    url: baseUrl + '/api/groups',",
+													"    method: 'POST',",
+													"    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"    body: { mode: 'raw', raw: JSON.stringify({ name: 'CustExt Group' }) }",
+													"}, function (err, res) {",
+													"    var gid = res.json().id;",
+													"    pm.sendRequest({",
+													"        url: baseUrl + '/api/types',",
+													"        method: 'POST',",
+													"        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"        body: { mode: 'raw', raw: JSON.stringify({ groupId: gid, name: 'CustExt Type' }) }",
+													"    }, function (err2, res2) {",
+													"        var tid = res2.json().id;",
+													"        pm.sendRequest({",
+													"            url: baseUrl + '/api/assets',",
+													"            method: 'POST',",
+													"            header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"            body: { mode: 'raw', raw: JSON.stringify({ typeId: tid, name: 'CustExt Asset' }) }",
+													"        }, function (err3, res3) {",
+													"            var aid = res3.json().id;",
+													"            pm.sendRequest({",
+													"                url: baseUrl + '/api/assets/request-rental',",
+													"                method: 'POST',",
+													"                header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"                body: { mode: 'raw', raw: JSON.stringify({ items: [{ typeId: tid, quantity: 1 }], returnDate: '2026-06-01' }) }",
+													"            }, function (err4, res4) {",
+													"                var rid = res4.json()[0].id;",
+													"                pm.sendRequest({",
+													"                    url: baseUrl + '/api/assets/bulk-status',",
+													"                    method: 'PATCH',",
+													"                    header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"                    body: { mode: 'raw', raw: JSON.stringify({ ids: [rid], status: 'Rented' }) }",
+													"                }, function (err5, res5) {",
+													"                    pm.sendRequest({",
+													"                        url: baseUrl + '/api/assets/request-extension',",
+													"                        method: 'POST',",
+													"                        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },",
+													"                        body: { mode: 'raw', raw: JSON.stringify({ assetId: rid, newReturnDate: '2026-06-15' }) }",
+													"                    }, function (err6, res6) {",
+													"                        pm.variables.set('assetId1', rid);",
+													"                    });",
+													"                });",
+													"            });",
+													"        });",
+													"    });",
+													"});"
+												]
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Status is 403', function () {",
+													"    pm.response.to.have.status(403);",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"ids\": [\"{{assetId1}}\"],\n  \"decision\": \"approve\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/assets/extension-request",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"assets",
+												"extension-request"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "GET /reports/overview",
+					"item": [
+						{
+							"name": "200 - Reports overview",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"var json = pm.response.json();",
+											"pm.test('Has statusCounts', function () {",
+											"    pm.expect(json.statusCounts).to.be.an('object');",
+											"});",
+											"pm.test('Has topRented', function () {",
+											"    pm.expect(json.topRented).to.be.an('array');",
+											"});",
+											"pm.test('Has totalAssets', function () {",
+											"    pm.expect(json.totalAssets).to.be.a('number');",
+											"});",
+											"pm.test('Has overdueCount', function () {",
+											"    pm.expect(json.overdueCount).to.be.a('number');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/reports/overview",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"reports",
+										"overview"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "GET /rental-history",
+					"item": [
+						{
+							"name": "200 - Rental history",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test('Returns an array', function () {",
+											"    pm.expect(pm.response.json()).to.be.an('array');",
+											"});",
+											"pm.test('Records have required fields', function () {",
+											"    var json = pm.response.json();",
+											"    if (json.length > 0) {",
+											"        var r = json[0];",
+											"        pm.expect(r).to.have.property('id');",
+											"        pm.expect(r).to.have.property('assetId');",
+											"        pm.expect(r).to.have.property('assetName');",
+											"        pm.expect(r).to.have.property('finalStatus');",
+											"        pm.expect(r).to.have.property('completedAt');",
+											"    }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/rental-history",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"rental-history"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth Required",
+							"auth": {
+								"type": "noauth"
+							},
+							"item": [
+								{
+									"name": "Rejected - No token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"pm.test('Unauthenticated request is rejected', function () {",
+													"    pm.expect(pm.response.code).to.not.equal(200);",
+													"});",
+													"pm.test('Response is not valid history data', function () {",
+													"    try {",
+													"        var json = pm.response.json();",
+													"        pm.expect(Array.isArray(json)).to.be.false;",
+													"    } catch (e) {",
+													"        pm.expect(e).to.be.ok;",
+													"    }",
+													"});"
+												]
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/api/assets/rental-history",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"assets",
+												"rental-history"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "6. Seed Data",
+			"description": "Database reset.",
+			"item": [
+				{
+					"name": "POST /reset-seed",
+					"item": [
+						{
+							"name": "200 - Reset seed data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"var json = pm.response.json();",
+											"pm.test('Has assets array', function () {",
+											"    pm.expect(json.assets).to.be.an('array');",
+											"});",
+											"pm.test('Has assetTypes array', function () {",
+											"    pm.expect(json.assetTypes).to.be.an('array');",
+											"});",
+											"pm.test('Has productGroups array', function () {",
+											"    pm.expect(json.productGroups).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/reset-seed",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"assets",
+										"reset-seed"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	]
+}

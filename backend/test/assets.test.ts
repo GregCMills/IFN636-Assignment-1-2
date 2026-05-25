@@ -22,6 +22,16 @@ const mkAsset = (typeId: any, name = 'Unit 001', status = 'Available') =>
 
 describe('Asset Management API', () => {
 
+  beforeEach(async () => {
+    await Promise.all([
+      ProductGroup.deleteMany({}),
+      AssetType.deleteMany({}),
+      Asset.deleteMany({}),
+      RentalHistory.deleteMany({}),
+    ]);
+    clerkMock.reset();
+  });
+
   afterEach(async () => {
     await Promise.all([
       ProductGroup.deleteMany({}),
