@@ -20,20 +20,35 @@ function getTopLevelSuite(test) {
   return suite;
 }
 
+function escapePipe(str) {
+  return str.replace(/\|/g, '\\|');
+}
+
 class MarkdownTableReporter extends Spec {
   constructor(runner, options) {
     super(runner, options);
 
     this.results = [];
     this.prefixCounters = {};
+    this.prefixTitles = {};
 
     runner.on('pass', (test) => {
-      this.addResult(test, 'Pass');
+      const fullTitle = test.fullTitle();
+      const log = (global._assertionLog && global._assertionLog.get(fullTitle)) || [];
+      const expected = log.length > 0 ? log.map(e => e.expected).join(', ') : '';
+      const actual = log.length > 0 ? log.map(e => e.actual).join(', ') : 'Pass';
+      this.addResult(test, expected, actual, true);
     });
 
     runner.on('fail', (test, err) => {
+      const fullTitle = test.fullTitle();
+      const log = (global._assertionLog && global._assertionLog.get(fullTitle)) || [];
+      const expected = log.length > 0 ? log.map(e => e.expected).join(', ') : '';
       const msg = err.message.replace(/\n/g, ' ').substring(0, 200);
-      this.addResult(test, `Fail — ${msg}`);
+      const actual = log.length > 0
+        ? log.map(e => e.actual).join(', ') + ` — Fail: ${msg}`
+        : `Fail — ${msg}`;
+      this.addResult(test, expected, actual, false);
     });
 
     runner.on('end', () => {
@@ -41,41 +56,64 @@ class MarkdownTableReporter extends Spec {
     });
   }
 
-  addResult(test, actual) {
+  addResult(test, expected, actual, passed) {
     const topLevel = getTopLevelSuite(test);
     const prefix = getSuitePrefix(topLevel.title);
 
     if (!this.prefixCounters[prefix]) {
       this.prefixCounters[prefix] = 0;
+      this.prefixTitles[prefix] = topLevel.title;
     }
     this.prefixCounters[prefix]++;
     const num = String(this.prefixCounters[prefix]).padStart(2, '0');
 
     this.results.push({
       id: `TC-${prefix}-${num}`,
-      expected: test.title,
+      prefix: prefix,
+      description: test.title,
+      expected: expected,
       actual: actual,
+      passed: passed,
     });
   }
 
   printTable() {
     const total = this.results.length;
-    const passed = this.results.filter(r => r.actual === 'Pass').length;
+    const passed = this.results.filter(r => r.passed).length;
     const failed = total - passed;
 
     let md = '';
-    md += `## Test Case Results\n\n`;
+    md += `# Test Case Results\n\n`;
     md += `**Total:** ${total} | **Passed:** ${passed} | **Failed:** ${failed}\n\n`;
-    md += `| Test Case ID | Expected Output | Actual Output |\n`;
-    md += `|---|---|---|\n`;
+    md += '---\n\n';
 
+    const groups = {};
     for (const r of this.results) {
-      const expected = r.expected.replace(/\|/g, '\\|');
-      const actual = r.actual.replace(/\|/g, '\\|');
-      md += `| ${r.id} | ${expected} | ${actual} |\n`;
+      if (!groups[r.prefix]) {
+        groups[r.prefix] = [];
+      }
+      groups[r.prefix].push(r);
     }
 
-    md += '\n';
+    const groupOrder = Object.keys(this.prefixTitles);
+
+    for (const prefix of groupOrder) {
+      const suiteTitle = this.prefixTitles[prefix];
+      const tests = groups[prefix] || [];
+      const groupPassed = tests.filter(r => r.passed).length;
+      const groupFailed = tests.length - groupPassed;
+
+      md += `## ${suiteTitle}\n\n`;
+      md += `${tests.length} tests (${groupPassed} passed, ${groupFailed} failed)\n\n`;
+      md += `| Test Case ID | Description | Expected Output | Actual Output |\n`;
+      md += `|---|---|---|---|\n`;
+
+      for (const r of tests) {
+        md += `| ${r.id} | ${escapePipe(r.description)} | ${escapePipe(r.expected)} | ${escapePipe(r.actual)} |\n`;
+      }
+
+      md += '\n---\n\n';
+    }
 
     console.log('\n');
     console.log(md);
