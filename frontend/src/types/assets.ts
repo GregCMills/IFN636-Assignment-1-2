@@ -20,6 +20,7 @@ export interface AssetType {
   description?: string;
   imageUrl?: string;
   thumbnailUrl?: string;
+  pricePerDay?: number;
 }
 
 export interface Asset {
@@ -90,6 +91,6 @@ export interface AdminTabProps {
   updateEntity:         (
     entityType: 'group' | 'type' | 'asset',
     id: string,
-    updates: { name?: string; description?: string },
-  ) => Promise<{ name: string; description?: string; imageUrl?: string; thumbnailUrl?: string }>;
+    updates: { name?: string; description?: string; pricePerDay?: number },
+  ) => Promise<{ name: string; description?: string; imageUrl?: string; thumbnailUrl?: string; pricePerDay?: number }>;
 }

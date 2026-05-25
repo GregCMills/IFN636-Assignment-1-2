@@ -192,6 +192,71 @@ describe('EditEntityModal', () => {
     expect(textarea.value).toBe('New desc');
   });
 
+  describe('pricePerDay field', () => {
+    it('shows price input when entityType is type', () => {
+      render(
+        <EditEntityModal
+          {...makeProps({
+            entityType: 'type',
+            entity: { id: 't1', name: 'Test Type', pricePerDay: 25 },
+          })}
+        />
+      );
+      expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument();
+      expect(screen.getByText('Price Per Day (AUD)')).toBeInTheDocument();
+    });
+
+    it('does not show price input when entityType is group', () => {
+      render(<EditEntityModal {...makeProps({ entityType: 'group' })} />);
+      expect(screen.queryByPlaceholderText('0.00')).not.toBeInTheDocument();
+    });
+
+    it('does not show price input when entityType is asset', () => {
+      render(<EditEntityModal {...makeProps({ entityType: 'asset' })} />);
+      expect(screen.queryByPlaceholderText('0.00')).not.toBeInTheDocument();
+    });
+
+    it('calls onSave with pricePerDay when price changes', async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EditEntityModal
+          {...makeProps({
+            entityType: 'type',
+            onSave,
+            entity: { id: 't1', name: 'Test Type', pricePerDay: 0 },
+          })}
+        />
+      );
+      const priceInput = screen.getByPlaceholderText('0.00');
+      fireEvent.change(priceInput, { target: { value: '30' } });
+      fireEvent.click(screen.getByText('Save Changes'));
+      await waitFor(() => {
+        expect(onSave).toHaveBeenCalledWith('type', 't1', { pricePerDay: 30 });
+      });
+    });
+
+    it('does not include pricePerDay in updates when unchanged', async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EditEntityModal
+          {...makeProps({
+            entityType: 'type',
+            onSave,
+            entity: { id: 't1', name: 'Test Type', pricePerDay: 25 },
+          })}
+        />
+      );
+      const nameInput = screen.getByPlaceholderText('e.g. Product');
+      fireEvent.change(nameInput, { target: { value: 'Changed Name' } });
+      fireEvent.click(screen.getByText('Save Changes'));
+      await waitFor(() => {
+        expect(onSave).toHaveBeenCalledWith('type', 't1', { name: 'Changed Name' });
+        const call = onSave.mock.calls[0][2] as any;
+        expect(call.pricePerDay).toBeUndefined();
+      });
+    });
+  });
+
   describe('photo upload / delete — deferred to Save', () => {
     it('does NOT call onUploadPhoto when a file is selected', () => {
       const onUploadPhoto = vi.fn().mockResolvedValue(undefined);

@@ -503,7 +503,8 @@ export const resetSeedAssets = async (req: Request, res: Response) => {
   const typeDocs = SEED_TYPES.map(t => ({
     groupId: groupNameToId[t.groupName],
     name: t.name,
-    description: t.description || ''
+    description: t.description || '',
+    pricePerDay: t.pricePerDay,
   }));
   const createdTypes = await AssetType.insertMany(typeDocs);
   const typeNameToId: Record<string, any> = {};

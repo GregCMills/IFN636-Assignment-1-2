@@ -42,7 +42,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/types',  typeRoutes);
 app.use('/api/assets', assetRoutes);
 
-app.get('/test-cpu', (req: Request, res: Response) => {
+app.get('/api/test-cpu', (req: Request, res: Response) => {
   const iterations = Math.min(Number(req.query.iterations) || 50000, 500000);
   const start = performance.now();
   let primes = 0;

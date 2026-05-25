@@ -9,6 +9,7 @@ export interface SeedType {
   name: string;
   description: string;
   imageFile: string;
+  pricePerDay: number;
 }
 
 export interface SeedAsset {
@@ -57,97 +58,113 @@ export const SEED_TYPES: SeedType[] = [
     groupName: 'Laptops',    
     name: 'MacBook Air M2', 
     description: 'Apple M2 chip with 8-core CPU and 10-core GPU, 13.6-inch Liquid Retina display.',
-    imageFile: 'type_macbook_air_m2.jpg'
+    imageFile: 'type_macbook_air_m2.jpg',
+    pricePerDay: 25,
   },
   { 
     groupName: 'Laptops',    
     name: 'Dell XPS 15', 
     description: 'High-performance laptop with 15.6-inch 4K OLED display and NVIDIA GeForce RTX graphics.',
-    imageFile: 'type_dell_xps_15.jpg'
+    imageFile: 'type_dell_xps_15.jpg',
+    pricePerDay: 35,
   },
   { 
     groupName: 'Laptops',    
     name: 'Lenovo ThinkPad X1 Carbon', 
     description: 'Premium business laptop featuring a lightweight carbon-fiber chassis and legendary durability.',
-    imageFile: 'type_lenovo_thinkpad_x1_carbon.jpg'
+    imageFile: 'type_lenovo_thinkpad_x1_carbon.jpg',
+    pricePerDay: 30,
   },
   { 
     groupName: 'Laptops',    
     name: 'Microsoft Surface Pro 9', 
     description: 'Versatile 2-in-1 tablet and laptop with a 13-inch touchscreen and adjustable kickstand.',
-    imageFile: 'type_microsoft_surface_pro_9.jpg'
+    imageFile: 'type_microsoft_surface_pro_9.jpg',
+    pricePerDay: 28,
   },
   { 
     groupName: 'Projectors', 
     name: 'Epson 4K Projector', 
     description: 'Home theater projector with 4K PRO-UHD resolution and high brightness for vivid images.',
-    imageFile: 'type_epson_4k_projector.jpg'
+    imageFile: 'type_epson_4k_projector.jpg',
+    pricePerDay: 40,
   },
   { 
     groupName: 'Projectors', 
     name: 'BenQ Short Throw', 
     description: 'Short-throw projector ideal for small spaces, delivering large images from a short distance.',
-    imageFile: 'type_benq_short_throw.jpg'
+    imageFile: 'type_benq_short_throw.jpg',
+    pricePerDay: 30,
   },
   { 
     groupName: 'Cameras',    
     name: 'Sony A7III Camera', 
     description: 'Full-frame mirrorless camera with advanced autofocus and 4K video capabilities.',
-    imageFile: 'type_sony_a7iii_camera.jpg'
+    imageFile: 'type_sony_a7iii_camera.jpg',
+    pricePerDay: 45,
   },
   { 
     groupName: 'Cameras',    
     name: 'Canon EOS R6', 
     description: 'Versatile mirrorless camera with high-speed continuous shooting and excellent low-light performance.',
-    imageFile: 'type_canon_eos_r6.jpg'
+    imageFile: 'type_canon_eos_r6.jpg',
+    pricePerDay: 50,
   },
   { 
     groupName: 'Cameras',    
     name: 'GoPro Hero 12', 
     description: 'Rugged action camera with HyperSmooth 6.0 stabilization and waterproof design.',
-    imageFile: 'type_gopro_hero_12.jpg'
+    imageFile: 'type_gopro_hero_12.jpg',
+    pricePerDay: 20,
   },
   { 
     groupName: 'Audio',      
     name: 'Rode Wireless GO II', 
     description: 'Compact wireless microphone system with dual-channel recording and universal compatibility.',
-    imageFile: 'type_rode_wireless_go_ii.jpg'
+    imageFile: 'type_rode_wireless_go_ii.jpg',
+    pricePerDay: 15,
   },
   { 
     groupName: 'Audio',      
     name: 'Zoom H6 Recorder', 
     description: 'Portable multi-track recorder with interchangeable microphone capsules for professional audio.',
-    imageFile: 'type_zoom_h6_recorder.jpg'
+    imageFile: 'type_zoom_h6_recorder.jpg',
+    pricePerDay: 20,
   },
   { 
     groupName: 'Audio',      
     name: 'Sennheiser HD 660S Headphones', 
     description: 'Open-back dynamic headphones designed for critical listening and audiophile performance.',
-    imageFile: 'type_sennheiser_hd_660s_headphones.jpg'
+    imageFile: 'type_sennheiser_hd_660s_headphones.jpg',
+    pricePerDay: 12,
   },
   { 
     groupName: 'Lighting',   
     name: 'Elgato Key Light Air', 
     description: 'App-controlled LED panel with flicker-free illumination and adjustable color temperature.',
-    imageFile: 'type_elgato_key_light_air.jpg'
+    imageFile: 'type_elgato_key_light_air.jpg',
+    pricePerDay: 10,
   },
   { 
     groupName: 'Lighting',   
     name: 'Aputure 120D II', 
     description: 'Professional-grade COB LED light with high color accuracy and versatile light shaping options.',
-    imageFile: 'type_aputure_120d_ii.jpg'
+    imageFile: 'type_aputure_120d_ii.jpg',
+    pricePerDay: 35,
   },
   { 
     groupName: 'Networking', 
     name: 'TP-Link Wi-Fi 6 Router', 
     description: 'Next-gen Wi-Fi 6 router with high speeds and increased capacity for multiple devices.',
-    imageFile: 'type_tp-link_wi-fi_6_router.jpg'
+    imageFile: 'type_tp-link_wi-fi_6_router.jpg',
+    pricePerDay: 8,
   },
   { 
     groupName: 'Networking', 
     name: 'Cisco 8-Port Managed Switch', 
     description: 'Reliable managed switch with 8 Gigabit Ethernet ports for secure network expansion.',
-    imageFile: 'type_cisco_8-port_managed_switch.jpg'
+    imageFile: 'type_cisco_8-port_managed_switch.jpg',
+    pricePerDay: 12,
   },
 ];
 

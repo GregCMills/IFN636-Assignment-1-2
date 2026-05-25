@@ -688,9 +688,9 @@ Delete a single asset. Cleans up associated photo files.
 
 ---
 
-## CPU Load Test — `/test-cpu`
+## CPU Load Test — `/api/test-cpu`
 
-### GET /test-cpu
+### GET /api/test-cpu
 
 CPU-intensive endpoint for load balancing and stress testing. Computes prime numbers using trial division up to a configurable limit.
 
@@ -755,4 +755,4 @@ Serves uploaded photo files directly from disk via `express.static`. No authenti
 | 27 | DELETE | `/api/assets/:id/photo` | Yes | Yes |
 | 28 | PATCH | `/api/assets/:id` | Yes | Yes |
 | 29 | DELETE | `/api/assets/:id` | Yes | Yes |
-| 30 | GET | `/test-cpu` | No | No |
+| 30 | GET | `/api/test-cpu` | No | No |
