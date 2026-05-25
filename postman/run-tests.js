@@ -3,11 +3,10 @@ const newman = require('newman');
 const fs = require('fs');
 const path = require('path');
 
-const token = process.env.POSTMAN_TOKEN;
-if (!token || token === 'PASTE_YOUR_BEARER_TOKEN_HERE') {
-  console.error('ERROR: Set your bearer token in postman/.env');
-  console.error('  1. Copy the token from Profile -> API Bearer Token');
-  console.error('  2. Paste it in postman/.env as POSTMAN_TOKEN=...');
+const adminToken = process.env.POSTMAN_TOKEN;
+if (!adminToken || adminToken === 'PASTE_YOUR_BEARER_TOKEN_HERE') {
+  console.error('ERROR: Set your admin bearer token in postman/.env as POSTMAN_TOKEN=...');
+  console.error('  Copy the token from Profile -> API Bearer Token (logged in as admin)');
   process.exit(1);
 }
 
@@ -17,7 +16,7 @@ if (!imagePath || !fs.existsSync(imagePath)) {
   process.exit(1);
 }
 
-var collection = JSON.parse(fs.readFileSync(path.join(__dirname, 'Rental Manager API.postman_collection.json'), 'utf8'));
+var collection = JSON.parse(fs.readFileSync(path.join(__dirname, 'rental-manager-postman-api-tests.json'), 'utf8'));
 
 function injectImageSrc(items) {
   items.forEach(function (item) {
@@ -36,12 +35,28 @@ injectImageSrc(collection.item);
 const envPath = path.join(__dirname, 'Admin - Local.postman_environment.json');
 const env = JSON.parse(fs.readFileSync(envPath, 'utf8'));
 
-const tokenVar = env.values.find(function (v) { return v.key === 'token'; });
-if (tokenVar) tokenVar.value = token;
+function setEnvVar(key, value) {
+  var v = env.values.find(function (e) { return e.key === key; });
+  if (v) { v.value = value; }
+  else { env.values.push({ key: key, value: value, type: 'secret', enabled: true }); }
+}
+
+setEnvVar('admin_token', adminToken);
+console.log('Admin token injected.');
+
+var customerToken = process.env.CUSTOMER_TOKEN;
+if (customerToken) {
+  setEnvVar('customer_token', customerToken);
+  console.log('Customer token injected.');
+} else {
+  console.warn('WARNING: CUSTOMER_TOKEN not set in .env — 403 tests will use any existing env value.');
+}
+
+setEnvVar('TEST_IMAGE_UPLOAD_PATH', imagePath);
 
 fs.writeFileSync(envPath, JSON.stringify(env, null, '\t') + '\n');
 
-console.log('Token injected into environment. Running tests...\n');
+console.log('Running tests...\n');
 
 newman.run(
   {
@@ -49,7 +64,7 @@ newman.run(
     environment: env,
     reporters: ['cli'],
     iterationCount: 1,
-    timeout: 120000,
+    timeout: 300000,
     delayRequest: 100,
     abortOnFailure: false,
   },
@@ -75,6 +90,7 @@ newman.run(
       console.log('\n  FAILURES:');
       summary.run.failures.forEach(function (f, i) {
         var name = (f.item && f.item.name) || (f.source && f.source.name) || 'Unknown';
+        var parent = f.item && f.item.name ? name : 'Unknown';
         console.log('  ' + (i + 1) + '. ' + name + ' — ' + f.error.name + ': ' + f.error.message);
       });
     }

@@ -42,6 +42,10 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/types',  typeRoutes);
 app.use('/api/assets', assetRoutes);
 
+app.use('/api', (_req: Request, res: Response) => {
+  res.status(404).json({ message: 'Not found' });
+});
+
 // Express 5 automatically catches rejected promises from async route handlers
 // and passes them to next(err).  This 4-parameter middleware handles all such
 // errors.  AppError subclasses carry their own statusCode; unknown errors

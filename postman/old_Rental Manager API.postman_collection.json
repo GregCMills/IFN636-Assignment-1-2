@@ -1328,6 +1328,1053 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "8. Error Handling",
+			"description": "Tests for error responses: 400 (validation), 401 (unauthenticated), 403 (forbidden), 404 (not found), 409 (conflict). Sub-folders use folder-level auth overrides. 401 folder has no auth. 403 folder uses customer_token.",
+			"item": [
+				{
+					"name": "Setup",
+					"item": [
+						{
+							"name": "Setup - Create test group for error tests",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"pm.environment.set('err_group_id', pm.response.json().id);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Error Test Group\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Setup - Create test type for error tests",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"pm.environment.set('err_type_id', pm.response.json().id);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"groupId\": \"{{err_group_id}}\",\n  \"name\": \"Error Test Type\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": ["{{base_url}}"],
+									"path": ["api", "types"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Setup - Create test asset for error tests",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"pm.environment.set('err_asset_id', pm.response.json().id);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{err_type_id}}\",\n  \"name\": \"Error Test Asset\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "400 Tests",
+					"item": [
+						{
+							"name": "400 - Create group without name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"pm.test('Error message present', function () {",
+											"    pm.expect(pm.response.json().message).to.be.a('string');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Create group with blank name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"   \"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Create type without groupId",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test Type\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": ["{{base_url}}"],
+									"path": ["api", "types"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Create type without name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"groupId\": \"{{err_group_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": ["{{base_url}}"],
+									"path": ["api", "types"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Create asset without typeId",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test Asset\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Create asset without name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{err_type_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Batch create with empty names array",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{err_type_id}}\",\n  \"names\": []\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/batch",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "batch"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Bulk status without ids",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"Available\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/bulk-status",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "bulk-status"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Request rental without items",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"returnDate\": \"2026-06-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-rental",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "request-rental"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Request rental without returnDate",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"items\": [{ \"typeId\": \"{{err_type_id}}\", \"quantity\": 1 }]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-rental",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "request-rental"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Extension with date not later than current",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"assetId\": \"{{err_asset_id}}\",\n  \"newReturnDate\": \"2020-01-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-extension",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "request-extension"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "400 - Extension resolve without pending request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{err_asset_id}}\"],\n  \"decision\": \"approve\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/extension-request",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "extension-request"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Auth Required Tests",
+					"description": "Clerk redirects unauthenticated requests (302 to sign-in). Newman follows redirects, so the final response is 404 (catch-all). Tests verify unauthenticated requests do NOT return 200 with data.",
+					"auth": {
+						"type": "noauth"
+					},
+					"item": [
+						{
+							"name": "Auth - Get groups without token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Unauthenticated request is rejected (not 200)', function () {",
+											"    pm.expect(pm.response.code).to.not.equal(200);",
+											"});",
+											"pm.test('Response is not valid group data', function () {",
+											"    try {",
+											"        var json = pm.response.json();",
+											"        pm.expect(Array.isArray(json)).to.be.false;",
+											"    } catch (e) {",
+											"        pm.expect(e).to.be.ok;",
+											"    }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth - Create group without token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Unauthenticated request is rejected (not 201)', function () {",
+											"    pm.expect(pm.response.code).to.not.equal(201);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Should Not Create\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth - Delete group without token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Unauthenticated request is rejected (not 200)', function () {",
+											"    pm.expect(pm.response.code).to.not.equal(200);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/{{err_group_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups", "{{err_group_id}}"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Auth - Get rental history without token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Unauthenticated request is rejected (not 200)', function () {",
+											"    pm.expect(pm.response.code).to.not.equal(200);",
+											"});",
+											"pm.test('Response is not valid rental history', function () {",
+											"    try {",
+											"        var json = pm.response.json();",
+											"        pm.expect(Array.isArray(json)).to.be.false;",
+											"    } catch (e) {",
+											"        pm.expect(e).to.be.ok;",
+											"    }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/rental-history",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "rental-history"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "403 Tests",
+					"description": "Uses customer_token from environment. Set CUSTOMER_TOKEN in postman/.env — run-tests.js injects it automatically.",
+					"auth": {
+						"type": "bearer",
+						"bearer": [
+							{ "key": "token", "value": "{{customer_token}}", "type": "string" }
+						]
+					},
+					"item": [
+						{
+							"name": "403 - Customer cannot create group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"pm.test('Error message present', function () {",
+											"    pm.expect(pm.response.json().message).to.be.a('string');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Should Not Create\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer cannot create type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"groupId\": \"{{err_group_id}}\",\n  \"name\": \"Should Not Create\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/types",
+									"host": ["{{base_url}}"],
+									"path": ["api", "types"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer cannot create asset",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"typeId\": \"{{err_type_id}}\",\n  \"name\": \"Should Not Create\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer cannot set status to Maintenance",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{err_asset_id}}\"],\n  \"status\": \"Maintenance\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/bulk-status",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "bulk-status"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer cannot resolve extension requests",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ids\": [\"{{err_asset_id}}\"],\n  \"decision\": \"approve\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/extension-request",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "extension-request"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer cannot delete asset",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/{{err_asset_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "{{err_asset_id}}"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "403 - Customer cannot delete group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/{{err_group_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups", "{{err_group_id}}"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "404 Tests",
+					"item": [
+						{
+							"name": "404 - Get non-existent route",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"pm.test('Error message present', function () {",
+											"    pm.expect(pm.response.json().message).to.be.a('string');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/000000000000000000000000",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups", "000000000000000000000000"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "404 - Delete non-existent group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/000000000000000000000000",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups", "000000000000000000000000"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "404 - Delete non-existent type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/types/000000000000000000000000",
+									"host": ["{{base_url}}"],
+									"path": ["api", "types", "000000000000000000000000"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "404 - Delete non-existent asset",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/assets/000000000000000000000000",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "000000000000000000000000"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "409 Tests",
+					"item": [
+						{
+							"name": "409 - Request rental with insufficient stock",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 409', function () {",
+											"    pm.response.to.have.status(409);",
+											"});",
+											"pm.test('Error message about availability', function () {",
+											"    pm.expect(pm.response.json().message).to.include('available');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"items\": [{ \"typeId\": \"{{err_type_id}}\", \"quantity\": 999 }],\n  \"returnDate\": \"2026-06-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/assets/request-rental",
+									"host": ["{{base_url}}"],
+									"path": ["api", "assets", "request-rental"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Cleanup",
+					"item": [
+						{
+							"name": "Cleanup - Delete error test data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test('Status is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/groups/{{err_group_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["api", "groups", "{{err_group_id}}"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
 		}
 	]
 }

@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "test": "mocha",
+    "test:report": "mocha --reporter ./test/reporters/markdown-table-reporter.cjs",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
