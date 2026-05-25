@@ -770,68 +770,154 @@ The chain: `auth.requireAuth()` (401 if unauthenticated) → `auth.adminOnly()`
 
 ---
 
-## 5. Strategy — Transition Authoriser
+## 5. Chain of Responsibility — Admin Only Middleware
 
 **Category:** Behavioral
 
-> Strategy lets you define a family of algorithms, put each into a separate
-> class, and make their objects interchangeable.
+> Chain of Responsibility lets you pass requests along a chain of handlers. Upon
+> receiving a request, each handler decides either to process the request or to
+> pass it to the next handler in the chain.
 
 ### Overview
 
-A second Strategy instance handles authorisation for asset state transitions.
-The `TransitionAuthoriser` interface defines two methods — `canTransition()` and
-`verifyOwnership()` — with concrete implementations for Admin and Customer
-roles. The controller selects the strategy at runtime based on the user's role.
+Express middleware is a textbook implementation of the Chain of Responsibility
+pattern. Each handler receives the request, performs its work, and calls
+`next()` to pass control to the next handler. A handler can **short-circuit**
+the chain by sending a response instead of calling `next()`.
 
-### Relationship with State — three-phase validation
+The `adminOnly` middleware is the clearest example: it checks a condition (is
+the user an admin?), handles the request itself with `403` if the condition
+fails (chain stops), or calls `next()` to pass the request along to the next
+handler.
 
-The Strategy and State patterns work together:
+### Typical chain for an admin-only route
 
-1. **State** (structural): "Is Available → Rented a valid transition?" → No. Reject.
-2. **Strategy** (authorisational): "Does this user's role permit setting Maintenance?" → Customer: No. Reject.
-3. **Strategy** (ownership): "Does this user own the asset?" → Customer, wrong user: No. Reject.
+```
+auth.requireAuth() → auth.adminOnly() → controller
+```
 
-All three must pass for the transition to be permitted. Adding a future role
-(e.g. "manager") means creating one new `TransitionAuthoriser` class — no
-controller or state class changes needed.
+1. `auth.requireAuth()` — checks authentication. Unauthenticated → `401`,
+   chain stops.
+2. `auth.adminOnly()` — checks admin role. Non-admin → `403`, chain stops.
+3. `controller` — the terminal handler that processes the business logic.
 
-### Source file
+### Photo upload — extended chain
 
-#### `backend/services/asset-states/TransitionAuthoriser.ts`
+```
+auth.requireAuth() → auth.adminOnly() → multer.single('photo') → validateFileType → uploadPhoto
+```
+
+1. `auth.requireAuth()` — checks authentication (401 if unauthenticated).
+2. `auth.adminOnly()` — checks admin role (403 if not admin).
+3. `multer.single('photo')` — parses multipart data; enforces 5MB file size
+   limit.
+4. `validateFileType` — checks MIME type is `image/jpeg`, `image/png`, or
+   `image/webp`. Throws `ValidationError` (400) if not.
+5. `uploadPhoto('group')` — the terminal handler: processes and saves the
+   photo.
+
+### Source files
+
+#### `backend/services/auth/ClerkAuthAdapter.ts` — `adminOnly()` handler
 
 ```ts
-export interface TransitionAuthoriser {
-  canTransition(currentStatus: string, newStatus: string): boolean;
-  verifyOwnership(asset: any, userId: string): boolean;
-}
-
-export class AdminAuthoriser implements TransitionAuthoriser {
-  canTransition(currentStatus: string, newStatus: string): boolean {
-    return true;
-  }
-
-  verifyOwnership(asset: any, userId: string): boolean {
-    return true;
-  }
-}
-
-export class CustomerAuthoriser implements TransitionAuthoriser {
-  canTransition(currentStatus: string, newStatus: string): boolean {
-    return ['Rented', 'Pending Return'].includes(newStatus);
-  }
-
-  verifyOwnership(asset: any, userId: string): boolean {
-    return asset.rentedByUserId === userId;
-  }
+adminOnly(): RequestHandler {
+  return async (req: Request, res: any, next: any) => {
+    try {
+      const userId = this.getUserId(req);
+      if (!userId) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      const user = await this.getUser(userId);
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      next();
+    } catch (err: any) {
+      console.error('[adminOnly] error:', err?.message ?? err);
+      res.status(403).json({ message: 'Admin access required' });
+    }
+  };
 }
 ```
 
-### Runtime selection in the controller
+#### `backend/middleware/uploadMiddleware.ts` — upload validation chain
 
 ```ts
-const authoriser = isAdmin ? new AdminAuthoriser() : new CustomerAuthoriser();
+import multer from 'multer';
+import { Request, Response, NextFunction } from 'express';
+import { ValidationError } from '../services/errors/AppError';
 
-if (!machine.canTransitionTo(status, authoriser)) { /* reject */ }
-if (!authoriser.verifyOwnership(asset, userId))   { /* reject */ }
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_MIMETYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+export const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE },
+});
+
+export const validateFileType = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.file) return next();
+  if (!ALLOWED_MIMETYPES.includes(req.file.mimetype)) {
+    throw new ValidationError(
+      `Invalid file type: ${req.file.mimetype}. Allowed types: ${ALLOWED_MIMETYPES.join(', ')}`,
+    );
+  }
+  next();
+};
+```
+
+#### `backend/services/errors/AppError.ts` — error hierarchy for the terminal handler
+
+```ts
+export class AppError extends Error {
+  public statusCode: number;
+
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.name = this.constructor.name;
+    this.statusCode = statusCode;
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(message: string) { super(message, 400); }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message: string) { super(message, 404); }
+}
+
+export class AuthorisationError extends AppError {
+  constructor(message: string) { super(message, 403); }
+}
+
+export class AuthenticationError extends AppError {
+  constructor(message: string) { super(message, 401); }
+}
+```
+
+#### `backend/server.ts` — terminal error handler
+
+The global error-handling middleware is the terminal handler in the chain.
+Express 5 catches rejected promises from `async` handlers and forwards them
+here. `AppError` subclasses carry their own HTTP status code; unknown errors
+default to 500 and their message is hidden to prevent information leakage.
+
+```ts
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  const status = err instanceof AppError ? err.statusCode : 500;
+  const message = status < 500 ? err.message : 'Internal server error';
+  res.status(status).json({ message });
+});
+```
+
+#### `backend/routes/assetRoutes.ts` — route definitions with chain wiring
+
+```ts
+router.post('/',                         auth.requireAuth(), auth.adminOnly(),  createAsset);
+router.post('/:id/photo',                auth.requireAuth(), auth.adminOnly(),  upload.single('photo'), validateFileType, uploadPhoto('asset'));
+router.delete('/:id',                    auth.requireAuth(), auth.adminOnly(),  deleteAsset);
+router.patch('/bulk-status',             auth.requireAuth(),                    bulkUpdateStatus);
+router.post('/request-rental',           auth.requireAuth(),                    requestRental);
 ```
