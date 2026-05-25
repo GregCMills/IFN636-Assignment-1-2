@@ -514,5 +514,47 @@ describe('Photo Upload API', () => {
       expect(found).to.exist;
       expect(found.description).to.equal('');
     });
+
+    it('updates pricePerDay for a type', async () => {
+      const group = await mkGroup();
+      const type = await mkType(group.id, 'Test Type');
+      const res = await request(app)
+        .patch(`/api/types/${type.id}`)
+        .send({ pricePerDay: 25 });
+      expect(res.status).to.equal(200);
+      expect(res.body.pricePerDay).to.equal(25);
+      const updated = await AssetType.findById(type.id);
+      expect(updated!.pricePerDay).to.equal(25);
+    });
+
+    it('updates pricePerDay to 0 for a type', async () => {
+      const group = await mkGroup();
+      const type = await AssetType.create({ groupId: group.id, name: 'Priced', pricePerDay: 50 });
+      const res = await request(app)
+        .patch(`/api/types/${type.id}`)
+        .send({ pricePerDay: 0 });
+      expect(res.status).to.equal(200);
+      expect(res.body.pricePerDay).to.equal(0);
+    });
+
+    it('ignores pricePerDay for a group', async () => {
+      const group = await mkGroup('PriceGroup');
+      const res = await request(app)
+        .patch(`/api/groups/${group.id}`)
+        .send({ pricePerDay: 25 });
+      expect(res.status).to.equal(200);
+      expect(res.body.pricePerDay).to.equal(undefined);
+    });
+
+    it('ignores pricePerDay for an asset', async () => {
+      const group = await mkGroup();
+      const type = await mkType(group.id);
+      const asset = await mkAsset(type.id, 'Test Asset');
+      const res = await request(app)
+        .patch(`/api/assets/${asset.id}`)
+        .send({ pricePerDay: 25 });
+      expect(res.status).to.equal(200);
+      expect(res.body.pricePerDay).to.equal(undefined);
+    });
   });
 });

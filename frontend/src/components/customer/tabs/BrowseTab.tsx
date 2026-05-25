@@ -81,7 +81,12 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
       try {
         const items = Object.entries(cart).map(([typeId, quantity]) => ({ typeId, quantity }));
         const response = await axiosInstance.post('/api/assets/calculate-cost', { items, returnDate });
-        setCostEstimate(response.data);
+        const data = response.data;
+        if (data && typeof data.grandTotal === 'number') {
+          setCostEstimate(data);
+        } else {
+          setCostEstimate(null);
+        }
       } catch {
         setCostEstimate(null);
       } finally {
@@ -376,25 +381,25 @@ const BrowseTab = ({ assets, assetTypes, productGroups, requestRental }: Custome
                           <p className="text-xs text-text-muted">
                             {costEstimate.days} day{costEstimate.days === 1 ? '' : 's'} rental
                           </p>
-                          {costEstimate.items.map(item => (
+                          {costEstimate.items?.map(item => (
                             <div key={item.typeId} className="flex justify-between text-sm">
                               <span className="text-text-secondary">
                                 {item.typeName} × {item.quantity}
                               </span>
                               <span className="text-text-primary font-medium">
-                                ${item.lineTotal.toFixed(2)}
+                                ${item.lineTotal?.toFixed(2) ?? '0.00'}
                               </span>
                             </div>
                           ))}
                           <div className="pt-2 border-t border-border-default flex justify-between items-center">
                             <span className="text-text-secondary font-bold">Total</span>
                             <span className="text-brand-light font-bold text-lg">
-                              ${costEstimate.grandTotal.toFixed(2)}
+                              ${costEstimate.grandTotal?.toFixed(2) ?? '0.00'}
                             </span>
                           </div>
-                          {costEstimate.days >= 7 && (
+                          {(costEstimate.days ?? 0) >= 7 && (
                             <p className="text-xs text-status-success italic">
-                              {costEstimate.days >= 30
+                              {(costEstimate.days ?? 0) >= 30
                                 ? 'Long-term discount applied (15% + 10%)'
                                 : 'Weekly discount applied (10%)'}
                             </p>

@@ -147,7 +147,7 @@ const Dashboard = () => {
   const updateEntity = async (
     entityType: 'group' | 'type' | 'asset',
     id: string,
-    updates: { name?: string; description?: string },
+    updates: { name?: string; description?: string; pricePerDay?: number },
   ) => {
     const headers = await authHeaders();
     const plural = entityType === 'asset' ? 'assets' : `${entityType}s`;

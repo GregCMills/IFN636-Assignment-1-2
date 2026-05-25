@@ -21,13 +21,14 @@ import { ValidationError, NotFoundError } from '../services/errors/AppError';
  * @returns {RequestHandler}
  */
 export const updateEntity = (entityType: 'group' | 'type' | 'asset'): RequestHandler => async (req: Request, res: Response) => {
-  const { name, description } = req.body;
+  const { name, description, pricePerDay } = req.body;
   if (name !== undefined && !name?.trim()) {
     throw new ValidationError('Name cannot be empty');
   }
   const result = await entityService.updateEntity(entityType, req.params.id as string, {
     ...(name !== undefined && { name: name.trim() }),
     ...(description !== undefined && { description }),
+    ...(pricePerDay !== undefined && entityType === 'type' && { pricePerDay: Number(pricePerDay) }),
   });
   if (!result) throw new NotFoundError(`${entityType} not found`);
   res.json(result);

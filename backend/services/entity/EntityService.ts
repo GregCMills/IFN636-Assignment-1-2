@@ -29,13 +29,14 @@ export class EntityService {
    * @param {object} updates   - { name?: string, description?: string }
    * @returns {Promise<any|null>} The updated document as JSON, or null if not found
    */
-  async updateEntity(entityType: 'group' | 'type' | 'asset', entityId: string, updates: { name?: string; description?: string }): Promise<any | null> {
+  async updateEntity(entityType: 'group' | 'type' | 'asset', entityId: string, updates: { name?: string; description?: string; pricePerDay?: number }): Promise<any | null> {
     const Model = models[entityType];
     if (!Model) throw new Error(`Unknown entity type: ${entityType}`);
     const doc = await Model.findById(entityId);
     if (!doc) return null;
     if (updates.name !== undefined) doc.name = updates.name;
     if (updates.description !== undefined) doc.description = updates.description;
+    if (updates.pricePerDay !== undefined && entityType === 'type') doc.pricePerDay = updates.pricePerDay;
     await doc.save();
     return doc.toJSON();
   }

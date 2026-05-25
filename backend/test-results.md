@@ -1,6 +1,6 @@
 # Test Case Results
 
-**Total:** 185 | **Passed:** 185 | **Failed:** 0
+**Total:** 189 | **Passed:** 189 | **Failed:** 0
 
 ---
 
@@ -49,7 +49,7 @@
 | TC-AMA-01 | returns an empty array when no groups exist | 200, [] | 200, [] |
 | TC-AMA-02 | returns groups sorted alphabetically by name | 200, ["Laptops","Projectors"] | 200, ["Laptops","Projectors"] |
 | TC-AMA-03 | returns 401 when unauthenticated | 401 | 401 |
-| TC-AMA-04 | creates a group and returns it with an id | 201, Cameras, {"name":"Cameras","description":"","id":"6a13efd1e6715723af4e37cc"}, 1 | 201, Cameras, {"name":"Cameras","description":"","id":"6a13efd1e6715723af4e37cc"}, 1 |
+| TC-AMA-04 | creates a group and returns it with an id | 201, Cameras, {"name":"Cameras","description":"","id":"6a13f24d5a5636b343b45513"}, 1 | 201, Cameras, {"name":"Cameras","description":"","id":"6a13f24d5a5636b343b45513"}, 1 |
 | TC-AMA-05 | trims whitespace from the name | 201, Audio | 201, Audio |
 | TC-AMA-06 | returns 400 when name is missing | 400 | 400 |
 | TC-AMA-07 | returns 400 when name is blank whitespace | 400 | 400 |
@@ -62,7 +62,7 @@
 | TC-AMA-14 | returns 401 when unauthenticated | 401 | 401 |
 | TC-AMA-15 | returns an empty array when no types exist | 200, [] | 200, [] |
 | TC-AMA-16 | returns types sorted alphabetically | ["Dell XPS","MacBook Pro"] | ["Dell XPS","MacBook Pro"] |
-| TC-AMA-17 | creates a type and returns it with id and groupId | 201, Projector X, 6a13efd3e6715723af4e3872, {"groupId":"6a13efd3e6715723af4e3872","name":"Projector X","description":"","pricePerDay":0,"id":"6a13efd3e6715723af4e38... | 201, Projector X, 6a13efd3e6715723af4e3872, {"groupId":"6a13efd3e6715723af4e3872","name":"Projector X","description":"","pricePerDay":0,"id":"6a13efd3e6715723af4e38... |
+| TC-AMA-17 | creates a type and returns it with id and groupId | 201, Projector X, 6a13f24f5a5636b343b455b9, {"groupId":"6a13f24f5a5636b343b455b9","name":"Projector X","description":"","pricePerDay":0,"id":"6a13f24f5a5636b343b455... | 201, Projector X, 6a13f24f5a5636b343b455b9, {"groupId":"6a13f24f5a5636b343b455b9","name":"Projector X","description":"","pricePerDay":0,"id":"6a13f24f5a5636b343b455... |
 | TC-AMA-18 | returns 400 when groupId is missing | 400 | 400 |
 | TC-AMA-19 | returns 400 when name is missing | 400 | 400 |
 | TC-AMA-20 | returns 403 when user is not admin | 403 | 403 |
@@ -71,12 +71,12 @@
 | TC-AMA-23 | only removes assets belonging to the deleted type | 1, 1 | 1, 1 |
 | TC-AMA-24 | returns 403 when user is not admin | 403 | 403 |
 | TC-AMA-25 | returns an empty array when no assets exist | 200, [] | 200, [] |
-| TC-AMA-26 | returns all assets | [{"typeId":"6a13efd4e6715723af4e38f2","name":"Unit 001","description":"","status":"Available","id":"6a13efd4e6715723af4e..., 2 | [{"typeId":"6a13efd4e6715723af4e38f2","name":"Unit 001","description":"","status":"Available","id":"6a13efd4e6715723af4e..., 2 |
-| TC-AMA-27 | creates an asset with status Available by default | 201, Unit 001, Available, 6a13efd5e6715723af4e3903 | 201, Unit 001, Available, 6a13efd5e6715723af4e3903 |
+| TC-AMA-26 | returns all assets | [{"typeId":"6a13f2505a5636b343b45639","name":"Unit 001","description":"","status":"Available","id":"6a13f2505a5636b343b4..., 2 | [{"typeId":"6a13f2505a5636b343b45639","name":"Unit 001","description":"","status":"Available","id":"6a13f2505a5636b343b4..., 2 |
+| TC-AMA-27 | creates an asset with status Available by default | 201, Unit 001, Available, 6a13f2515a5636b343b4564a | 201, Unit 001, Available, 6a13f2515a5636b343b4564a |
 | TC-AMA-28 | returns 400 when typeId is missing | 400 | 400 |
 | TC-AMA-29 | returns 400 when name is missing | 400 | 400 |
 | TC-AMA-30 | returns 403 when user is not admin | 403 | 403 |
-| TC-AMA-31 | creates multiple assets in one request | 201, [{"typeId":"6a13efd5e6715723af4e3931","name":"MAC 001","description":"","status":"Available","id":"6a13efd5e6715723af4e3..., 3, ["MAC 001","MAC 002","MAC 003"], 3 | 201, [{"typeId":"6a13efd5e6715723af4e3931","name":"MAC 001","description":"","status":"Available","id":"6a13efd5e6715723af4e3..., 3, ["MAC 001","MAC 002","MAC 003"], 3 |
+| TC-AMA-31 | creates multiple assets in one request | 201, [{"typeId":"6a13f2515a5636b343b45678","name":"MAC 001","description":"","status":"Available","id":"6a13f2515a5636b343b45..., 3, ["MAC 001","MAC 002","MAC 003"], 3 | 201, [{"typeId":"6a13f2515a5636b343b45678","name":"MAC 001","description":"","status":"Available","id":"6a13f2515a5636b343b45..., 3, ["MAC 001","MAC 002","MAC 003"], 3 |
 | TC-AMA-32 | all batch-created assets are Available and belong to the correct type | true, true | true, true |
 | TC-AMA-33 | returns 400 when names array is empty | 400 | 400 |
 | TC-AMA-34 | returns 400 when typeId is missing | 400 | 400 |
@@ -98,7 +98,7 @@
 | TC-AMA-50 | customer can cancel their own Pending Return (back to Rented) | 200, Rented | 200, Rented |
 | TC-AMA-51 | customer cannot approve or deny a Pending Return (admin-only transition to Available) | 403 | 403 |
 | TC-AMA-52 | customer cannot send a Pending Return to Maintenance | 403 | 403 |
-| TC-AMA-53 | marks available assets as Pending Rental for the requesting customer | 200, [{"typeId":"6a13efdae6715723af4e3a9d","name":"Unit 001","description":"","status":"Pending Rental","rentedByUserId":"tes..., 2, true, true, true | 200, [{"typeId":"6a13efdae6715723af4e3a9d","name":"Unit 001","description":"","status":"Pending Rental","rentedByUserId":"tes..., 2, true, true, true |
+| TC-AMA-53 | marks available assets as Pending Rental for the requesting customer | 200, [{"typeId":"6a13f2565a5636b343b457e4","name":"Unit 001","description":"","status":"Pending Rental","rentedByUserId":"tes..., 2, true, true, true | 200, [{"typeId":"6a13f2565a5636b343b457e4","name":"Unit 001","description":"","status":"Pending Rental","rentedByUserId":"tes..., 2, true, true, true |
 | TC-AMA-54 | returns 409 when not enough units are available | 409 | 409 |
 | TC-AMA-55 | only picks up Available assets (not Rented, Maintenance, etc.) | 409 | 409 |
 | TC-AMA-56 | returns 400 when items array is missing | 400 | 400 |
@@ -113,8 +113,8 @@
 | TC-AMA-65 | rejects decisions for assets without pending extension requests | 400 | 400 |
 | TC-AMA-66 | returns an empty array when no history exists | 200, [] | 200, [] |
 | TC-AMA-67 | returns 401 when unauthenticated | 401 | 401 |
-| TC-AMA-68 | records a history entry when an asset is approved for return (Pending Return → Available) | 200, [{"assetId":"6a13efdde6715723af4e3b7b","typeId":"6a13efdde6715723af4e3b79","assetName":"Unit 001","assetTypeName":"MacBo..., 1, 6a13efdde6715723af4e3b7b, Unit 001, MacBook Pro, test_user_id, 2026-05-01, 2026-05-15, Available | 200, [{"assetId":"6a13efdde6715723af4e3b7b","typeId":"6a13efdde6715723af4e3b79","assetName":"Unit 001","assetTypeName":"MacBo..., 1, 6a13efdde6715723af4e3b7b, Unit 001, MacBook Pro, test_user_id, 2026-05-01, 2026-05-15, Available |
-| TC-AMA-69 | records a history entry when an asset is approved for return with Maintenance status | 200, [{"assetId":"6a13efdde6715723af4e3b90","typeId":"6a13efdde6715723af4e3b8e","assetName":"Unit 002","assetTypeName":"Proje..., 1, 2026-05-02, Maintenance | 200, [{"assetId":"6a13efdde6715723af4e3b90","typeId":"6a13efdde6715723af4e3b8e","assetName":"Unit 002","assetTypeName":"Proje..., 1, 2026-05-02, Maintenance |
+| TC-AMA-68 | records a history entry when an asset is approved for return (Pending Return → Available) | 200, [{"assetId":"6a13f2585a5636b343b458c2","typeId":"6a13f2585a5636b343b458c0","assetName":"Unit 001","assetTypeName":"MacBo..., 1, 6a13f2585a5636b343b458c2, Unit 001, MacBook Pro, test_user_id, 2026-05-01, 2026-05-15, Available | 200, [{"assetId":"6a13f2585a5636b343b458c2","typeId":"6a13f2585a5636b343b458c0","assetName":"Unit 001","assetTypeName":"MacBo..., 1, 6a13f2585a5636b343b458c2, Unit 001, MacBook Pro, test_user_id, 2026-05-01, 2026-05-15, Available |
+| TC-AMA-69 | records a history entry when an asset is approved for return with Maintenance status | 200, [{"assetId":"6a13f2585a5636b343b458d7","typeId":"6a13f2585a5636b343b458d5","assetName":"Unit 002","assetTypeName":"Proje..., 1, 2026-05-02, Maintenance | 200, [{"assetId":"6a13f2585a5636b343b458d7","typeId":"6a13f2585a5636b343b458d5","assetName":"Unit 002","assetTypeName":"Proje..., 1, 2026-05-02, Maintenance |
 | TC-AMA-70 | does not record a history entry when a return is denied (Pending Return → Pending Rental) | 200, [], 0 | 200, [], 0 |
 
 ---
@@ -139,11 +139,11 @@
 
 | Test Case ID | Description | Expected Output | Actual Output |
 |---|---|---|---|
-| TC-ICC-01 | builds a tree with the correct parent-child relationships | Laptops, [{"doc":{"groupId":"6a13efdee6715723af4e3baf","name":"MacBook Pro","description":"","pricePerDay":0,"id":"6a13efdee67157..., 1, [{"doc":{"typeId":"6a13efdee6715723af4e3bb1","name":"Unit 001","description":"","status":"Available","id":"6a13efdee6715..., 2 | Laptops, [{"doc":{"groupId":"6a13efdee6715723af4e3baf","name":"MacBook Pro","description":"","pricePerDay":0,"id":"6a13efdee67157..., 1, [{"doc":{"typeId":"6a13efdee6715723af4e3bb1","name":"Unit 001","description":"","status":"Available","id":"6a13efdee6715..., 2 |
+| TC-ICC-01 | builds a tree with the correct parent-child relationships | Laptops, [{"doc":{"groupId":"6a13f2595a5636b343b458f6","name":"MacBook Pro","description":"","pricePerDay":0,"id":"6a13f2595a5636..., 1, [{"doc":{"typeId":"6a13f2595a5636b343b458f8","name":"Unit 001","description":"","status":"Available","id":"6a13f2595a563..., 2 | Laptops, [{"doc":{"groupId":"6a13f2595a5636b343b458f6","name":"MacBook Pro","description":"","pricePerDay":0,"id":"6a13f2595a5636..., 1, [{"doc":{"typeId":"6a13f2595a5636b343b458f8","name":"Unit 001","description":"","status":"Available","id":"6a13f2595a563..., 2 |
 | TC-ICC-02 | returns null for a non-existent group | null | null |
 | TC-ICC-03 | builds a tree where group delete cascades to all descendants | 0, 0, 0 | 0, 0, 0 |
 | TC-ICC-04 | only removes children belonging to the deleted group | 1, 1, 1 | 1, 1, 1 |
-| TC-ICC-05 | builds a tree with the correct child count | MacBook Pro, [{"doc":{"typeId":"6a13efdfe6715723af4e3bf0","name":"Unit 001","description":"","status":"Available","id":"6a13efdfe6715..., 2 | MacBook Pro, [{"doc":{"typeId":"6a13efdfe6715723af4e3bf0","name":"Unit 001","description":"","status":"Available","id":"6a13efdfe6715..., 2 |
+| TC-ICC-05 | builds a tree with the correct child count | MacBook Pro, [{"doc":{"typeId":"6a13f25a5a5636b343b45937","name":"Unit 001","description":"","status":"Available","id":"6a13f25a5a563..., 2 | MacBook Pro, [{"doc":{"typeId":"6a13f25a5a5636b343b45937","name":"Unit 001","description":"","status":"Available","id":"6a13f25a5a563..., 2 |
 | TC-ICC-06 | returns null for a non-existent type | null | null |
 | TC-ICC-07 | cascade-deletes all assets belonging to the type | 0, 0 | 0, 0 |
 | TC-ICC-08 | only removes assets belonging to the deleted type | 1, 1 | 1, 1 |
@@ -159,12 +159,12 @@
 
 ## Photo Upload API
 
-30 tests (30 passed, 0 failed)
+34 tests (34 passed, 0 failed)
 
 | Test Case ID | Description | Expected Output | Actual Output |
 |---|---|---|---|
-| TC-PUA-01 | uploads a photo for a group and sets imageUrl/thumbnailUrl | 200, /uploads/groups/6a13efe2e6715723af4e3c7b.jpg, /uploads/groups/6a13efe2e6715723af4e3c7b_thumb.jpg, /uploads/groups/6a13efe2e6715723af4e3c7b.jpg, /uploads/groups/6a13efe2e6715723af4e3c7b_thumb.jpg, true, true | 200, /uploads/groups/6a13efe2e6715723af4e3c7b.jpg, /uploads/groups/6a13efe2e6715723af4e3c7b_thumb.jpg, /uploads/groups/6a13efe2e6715723af4e3c7b.jpg, /uploads/groups/6a13efe2e6715723af4e3c7b_thumb.jpg, true, true |
-| TC-PUA-02 | replaces an existing photo (old files deleted, new ones saved) | 200, 200, /uploads/groups/6a13efe2e6715723af4e3c83.jpg, true, /uploads/groups/6a13efe2e6715723af4e3c83.jpg | 200, 200, /uploads/groups/6a13efe2e6715723af4e3c83.jpg, true, /uploads/groups/6a13efe2e6715723af4e3c83.jpg |
+| TC-PUA-01 | uploads a photo for a group and sets imageUrl/thumbnailUrl | 200, /uploads/groups/6a13f25c5a5636b343b459c2.jpg, /uploads/groups/6a13f25c5a5636b343b459c2_thumb.jpg, /uploads/groups/6a13f25c5a5636b343b459c2.jpg, /uploads/groups/6a13f25c5a5636b343b459c2_thumb.jpg, true, true | 200, /uploads/groups/6a13f25c5a5636b343b459c2.jpg, /uploads/groups/6a13f25c5a5636b343b459c2_thumb.jpg, /uploads/groups/6a13f25c5a5636b343b459c2.jpg, /uploads/groups/6a13f25c5a5636b343b459c2_thumb.jpg, true, true |
+| TC-PUA-02 | replaces an existing photo (old files deleted, new ones saved) | 200, 200, /uploads/groups/6a13f25d5a5636b343b459ca.jpg, true, /uploads/groups/6a13f25d5a5636b343b459ca.jpg | 200, 200, /uploads/groups/6a13f25d5a5636b343b459ca.jpg, true, /uploads/groups/6a13f25d5a5636b343b459ca.jpg |
 | TC-PUA-03 | returns 400 when no file is attached | 400 | 400 |
 | TC-PUA-04 | returns 400 for invalid file type | 400, Invalid file type: text/plain. Allowed types: image/jpeg, image/png, image/webp | 400, Invalid file type: text/plain. Allowed types: image/jpeg, image/png, image/webp |
 | TC-PUA-05 | returns 403 when user is not admin | 403 | 403 |
@@ -172,10 +172,10 @@
 | TC-PUA-07 | deletes a photo and clears DB fields | 200, 200, true, null, null, false, false | 200, 200, true, null, null, false, false |
 | TC-PUA-08 | succeeds silently when no photo exists | 200, true | 200, true |
 | TC-PUA-09 | returns 403 when user is not admin | 403 | 403 |
-| TC-PUA-10 | uploads a photo for an asset type | 200, /uploads/types/6a13efe3e6715723af4e3cb9.jpg, /uploads/types/6a13efe3e6715723af4e3cb9_thumb.jpg, /uploads/types/6a13efe3e6715723af4e3cb9.jpg | 200, /uploads/types/6a13efe3e6715723af4e3cb9.jpg, /uploads/types/6a13efe3e6715723af4e3cb9_thumb.jpg, /uploads/types/6a13efe3e6715723af4e3cb9.jpg |
+| TC-PUA-10 | uploads a photo for an asset type | 200, /uploads/types/6a13f25d5a5636b343b45a00.jpg, /uploads/types/6a13f25d5a5636b343b45a00_thumb.jpg, /uploads/types/6a13f25d5a5636b343b45a00.jpg | 200, /uploads/types/6a13f25d5a5636b343b45a00.jpg, /uploads/types/6a13f25d5a5636b343b45a00_thumb.jpg, /uploads/types/6a13f25d5a5636b343b45a00.jpg |
 | TC-PUA-11 | returns 400 for invalid file type on types | 400 | 400 |
 | TC-PUA-12 | deletes a photo from an asset type | 200, null | 200, null |
-| TC-PUA-13 | uploads a photo for an asset | 200, /uploads/assets/6a13efe3e6715723af4e3cd8.jpg, /uploads/assets/6a13efe3e6715723af4e3cd8_thumb.jpg, /uploads/assets/6a13efe3e6715723af4e3cd8.jpg | 200, /uploads/assets/6a13efe3e6715723af4e3cd8.jpg, /uploads/assets/6a13efe3e6715723af4e3cd8_thumb.jpg, /uploads/assets/6a13efe3e6715723af4e3cd8.jpg |
+| TC-PUA-13 | uploads a photo for an asset | 200, /uploads/assets/6a13f25e5a5636b343b45a1f.jpg, /uploads/assets/6a13f25e5a5636b343b45a1f_thumb.jpg, /uploads/assets/6a13f25e5a5636b343b45a1f.jpg | 200, /uploads/assets/6a13f25e5a5636b343b45a1f.jpg, /uploads/assets/6a13f25e5a5636b343b45a1f_thumb.jpg, /uploads/assets/6a13f25e5a5636b343b45a1f.jpg |
 | TC-PUA-14 | returns 400 for invalid file type on assets | 400 | 400 |
 | TC-PUA-15 | deletes a photo from an asset | 200, null | 200, null |
 | TC-PUA-16 | deletes photo files when a group with photos is deleted | 200, 200, false, false | 200, 200, false, false |
@@ -191,8 +191,12 @@
 | TC-PUA-26 | returns 403 when non-admin | 403 | 403 |
 | TC-PUA-27 | works for types | 200, New Type, Type desc | 200, New Type, Type desc |
 | TC-PUA-28 | works for assets | 200, New Asset, Asset desc | 200, New Asset, Asset desc |
-| TC-PUA-29 | description field appears in GET responses | 200, {"name":"Desc Group","description":"test description","id":"6a13efe6e6715723af4e3d6d"}, test description | 200, {"name":"Desc Group","description":"test description","id":"6a13efe6e6715723af4e3d6d"}, test description |
-| TC-PUA-30 | returns no description field when not set | 200, {"name":"No Desc","description":"","id":"6a13efe6e6715723af4e3d73"},  | 200, {"name":"No Desc","description":"","id":"6a13efe6e6715723af4e3d73"},  |
+| TC-PUA-29 | description field appears in GET responses | 200, {"name":"Desc Group","description":"test description","id":"6a13f2605a5636b343b45ab4"}, test description | 200, {"name":"Desc Group","description":"test description","id":"6a13f2605a5636b343b45ab4"}, test description |
+| TC-PUA-30 | returns no description field when not set | 200, {"name":"No Desc","description":"","id":"6a13f2605a5636b343b45aba"},  | 200, {"name":"No Desc","description":"","id":"6a13f2605a5636b343b45aba"},  |
+| TC-PUA-31 | updates pricePerDay for a type | 200, 25, 25 | 200, 25, 25 |
+| TC-PUA-32 | updates pricePerDay to 0 for a type | 200, 0 | 200, 0 |
+| TC-PUA-33 | ignores pricePerDay for a group | 200, undefined | 200, undefined |
+| TC-PUA-34 | ignores pricePerDay for an asset | 200, undefined | 200, undefined |
 
 ---
 

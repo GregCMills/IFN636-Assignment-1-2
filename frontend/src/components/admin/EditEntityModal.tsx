@@ -11,11 +11,12 @@ interface EditEntityModalProps {
     description?: string;
     imageUrl?: string;
     thumbnailUrl?: string;
+    pricePerDay?: number;
   };
   onSave: (
     entityType: 'group' | 'type' | 'asset',
     id: string,
-    updates: { name?: string; description?: string },
+    updates: { name?: string; description?: string; pricePerDay?: number },
   ) => Promise<void>;
   onUploadPhoto: (
     entityType: 'group' | 'type' | 'asset',
@@ -45,6 +46,7 @@ const EditEntityModal = ({
 }: EditEntityModalProps) => {
   const [name, setName] = useState(entity.name);
   const [description, setDescription] = useState(entity.description ?? '');
+  const [pricePerDay, setPricePerDay] = useState(String(entity.pricePerDay ?? 0));
   const [uploading, setUploading] = useState(false);
   const [pendingPhotoAction, setPendingPhotoAction] = useState<PendingPhotoAction | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +55,8 @@ const EditEntityModal = ({
   useEffect(() => {
     setName(entity.name);
     setDescription(entity.description ?? '');
-  }, [entity.name, entity.description]);
+    setPricePerDay(String(entity.pricePerDay ?? 0));
+  }, [entity.name, entity.description, entity.pricePerDay]);
 
   // Reset pending photo action when a different entity is opened
   useEffect(() => {
@@ -112,9 +115,15 @@ const EditEntityModal = ({
       }
 
       // 2. Save name/description changes
-      const updates: { name?: string; description?: string } = {};
+      const updates: { name?: string; description?: string; pricePerDay?: number } = {};
       if (name.trim() !== entity.name) updates.name = name.trim();
       if (description !== (entity.description ?? '')) updates.description = description;
+      if (entityType === 'type') {
+        const newPrice = parseFloat(pricePerDay);
+        if (!isNaN(newPrice) && newPrice !== (entity.pricePerDay ?? 0)) {
+          updates.pricePerDay = newPrice;
+        }
+      }
 
       if (Object.keys(updates).length > 0 || hasPendingPhotoChange) {
         await onSave(entityType, entity.id, updates);
@@ -298,6 +307,26 @@ const EditEntityModal = ({
                 placeholder={`Describe this ${entityLabel.toLowerCase()}...`}
               />
             </div>
+
+            {entityType === 'type' && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-text-label uppercase tracking-widest ml-1">
+                  Price Per Day (AUD)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricePerDay}
+                    onChange={(e) => setPricePerDay(e.target.value)}
+                    className="input-base text-sm py-2 pl-7"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Mobile-only photo controls (shown when no photo) */}
             {!hasPhoto && (
