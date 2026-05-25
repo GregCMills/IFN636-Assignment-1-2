@@ -17,9 +17,6 @@ const Dashboard = () => {
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState('');
 
-  // In a useEffect or console:
-  getToken({ template: 'postman' }).then(token => console.log("BEARER TOKEN:", token));
-
   // ── Auth header helper ────────────────────────────────────────────────────
 
   const authHeaders = useCallback(async () => {

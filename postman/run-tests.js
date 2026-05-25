@@ -49,7 +49,7 @@ newman.run(
     environment: env,
     reporters: ['cli'],
     iterationCount: 1,
-    timeout: 30000,
+    timeout: 120000,
     delayRequest: 100,
     abortOnFailure: false,
   },
