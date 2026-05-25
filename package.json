@@ -6,9 +6,9 @@
     "install-all": "npm install && npm install --prefix backend && npm install --prefix frontend",
     "start": "concurrently \"npm run prod --prefix backend\" \"npm start --prefix frontend\"",
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
-    "dev:test": "concurrently \"npm run dev:test --prefix backend\" \"npm start --prefix frontend\"",
+    "dev:use-test-db": "concurrently \"npm run dev:test --prefix backend\" \"npm start --prefix frontend\"",
     "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix frontend",
-    "test-db": "npm run typecheck && npm test --prefix backend && npm test --prefix frontend",
+    "test": "npm run typecheck && npm test --prefix backend && npm test --prefix frontend",
     "test:api": "node postman/run-tests.js"
   },
   "devDependencies": {
