@@ -688,6 +688,32 @@ Delete a single asset. Cleans up associated photo files.
 
 ---
 
+## CPU Load Test — `/test-cpu`
+
+### GET /test-cpu
+
+CPU-intensive endpoint for load balancing and stress testing. Computes prime numbers using trial division up to a configurable limit.
+
+- **Auth**: None (public endpoint)
+
+**Query Parameters** (all optional):
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `iterations` | number | Upper bound for prime search (default: 50000, max: 500000) |
+
+**Response** `200`:
+
+```json
+{
+  "primes": 5133,
+  "elapsedMs": 342,
+  "iterations": 50000
+}
+```
+
+---
+
 ## Static Files
 
 ### GET /uploads/*
@@ -729,3 +755,4 @@ Serves uploaded photo files directly from disk via `express.static`. No authenti
 | 27 | DELETE | `/api/assets/:id/photo` | Yes | Yes |
 | 28 | PATCH | `/api/assets/:id` | Yes | Yes |
 | 29 | DELETE | `/api/assets/:id` | Yes | Yes |
+| 30 | GET | `/test-cpu` | No | No |

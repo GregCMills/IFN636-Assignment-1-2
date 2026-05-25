@@ -42,6 +42,21 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/types',  typeRoutes);
 app.use('/api/assets', assetRoutes);
 
+app.get('/test-cpu', (req: Request, res: Response) => {
+  const iterations = Math.min(Number(req.query.iterations) || 50000, 500000);
+  const start = performance.now();
+  let primes = 0;
+  for (let n = 2; n < iterations; n++) {
+    let isPrime = true;
+    for (let i = 2; i * i <= n; i++) {
+      if (n % i === 0) { isPrime = false; break; }
+    }
+    if (isPrime) primes++;
+  }
+  const elapsedMs = Math.round(performance.now() - start);
+  res.json({ primes, elapsedMs, iterations });
+});
+
 app.use('/api', (_req: Request, res: Response) => {
   res.status(404).json({ message: 'Not found' });
 });
