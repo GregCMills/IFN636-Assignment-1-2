@@ -32,3 +32,4 @@ yarn-error.log*
 *.plan.md
 *.report.md
 uploads/
+test-results.md

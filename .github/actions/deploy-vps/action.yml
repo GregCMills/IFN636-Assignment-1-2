@@ -73,6 +73,8 @@ runs:
           cd ../frontend
           VITE_CLERK_PUBLISHABLE_KEY=$DEPLOY_VITE_CLERK_PUBLISHABLE_KEY npm ci
           VITE_CLERK_PUBLISHABLE_KEY=$DEPLOY_VITE_CLERK_PUBLISHABLE_KEY npm run build
+          mkdir -p /var/www/app/frontend/dist/test
+          echo '<!DOCTYPE html><html><body>duplicate</body></html>' > /var/www/app/frontend/dist/test/index.html
 
           # Write production .env
           printf '%s' "$DEPLOY_PROD_ENV" > /var/www/app/backend/.env

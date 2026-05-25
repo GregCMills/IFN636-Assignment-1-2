@@ -84,6 +84,11 @@ jobs:
           npm ci
           npm run build
 
+      - name: Write instance test page
+        run: |
+          mkdir -p ./frontend/dist/test
+          echo '<!DOCTYPE html><html><body>original</body></html>' > ./frontend/dist/test/index.html
+
       - name: Write production .env
         run: |
           cd ./backend
